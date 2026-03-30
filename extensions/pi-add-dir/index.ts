@@ -9,6 +9,8 @@
  *
  * Commands:
  *   /add-dir <path>     — add an external directory
+ *   /add-dir            — interactive mode with suggestions
+ *   /suggest-dirs       — show directory suggestions
  *   /remove-dir [path]  — remove a directory (interactive if no path)
  *   /dirs               — list all added directories
  *
@@ -28,6 +30,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { suggestDirectories } from "./suggestions.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -557,13 +560,40 @@ export default function addDirExtension(pi: ExtensionAPI) {
   // -----------------------------------------------------------------------
 
   pi.registerCommand("add-dir", {
-    description: "Add an external directory to this session",
+    description: "Add an external directory to this session (shows suggestions when called without args)",
     handler: async (args, ctx) => {
       let inputPath = args?.trim();
+
       if (!inputPath) {
-        const prompted = await ctx.ui.input("Directory path:", "");
-        if (!prompted) return;
-        inputPath = prompted;
+        // Show suggestions when called without args
+        const suggestions = suggestDirectories({
+          cwd: ctx.cwd,
+          alreadyAdded: addedDirs.map(d => d.absolutePath),
+        });
+
+        if (suggestions.length > 0) {
+          const choices = suggestions.map(s => {
+            const reasons = s.reasons.slice(0, 2).join(", ");
+            return `${s.label} — ${s.absolutePath} (${reasons})`;
+          });
+          choices.push("📝 Enter a custom path...");
+
+          const selected = await ctx.ui.select("Add directory:", choices);
+          if (selected === undefined) return;
+
+          if (Number(selected) === choices.length - 1) {
+            // Custom path
+            const prompted = await ctx.ui.input("Directory path:", "");
+            if (!prompted) return;
+            inputPath = prompted;
+          } else {
+            inputPath = suggestions[Number(selected)].absolutePath;
+          }
+        } else {
+          const prompted = await ctx.ui.input("Directory path (no suggestions found):", "");
+          if (!prompted) return;
+          inputPath = prompted;
+        }
       }
 
       const result = addDir(inputPath, ctx.cwd, ctx);
@@ -578,6 +608,33 @@ export default function addDirExtension(pi: ExtensionAPI) {
       if (result.ok && result.hasNewSkills) {
         await ctx.reload();
       }
+    },
+  });
+
+  pi.registerCommand("suggest-dirs", {
+    description: "Show directory suggestions based on project structure",
+    handler: async (_args, ctx) => {
+      const suggestions = suggestDirectories({
+        cwd: ctx.cwd,
+        alreadyAdded: addedDirs.map(d => d.absolutePath),
+      });
+
+      if (suggestions.length === 0) {
+        ctx.ui.notify("No suggestions found. Try /add-dir <path> to add manually.", "info");
+        return;
+      }
+
+      const lines: string[] = [`Suggested directories (${suggestions.length}):\n`];
+      for (const s of suggestions) {
+        const score = Math.round(s.score * 100);
+        lines.push(`  📂 ${s.label}  (${score}% relevance)`);
+        lines.push(`     ${s.absolutePath}`);
+        lines.push(`     ${s.reasons.join(", ")}`);
+        lines.push("");
+      }
+      lines.push("Use /add-dir to pick one, or /add-dir <path> to add directly.");
+
+      ctx.ui.notify(lines.join("\n"), "info");
     },
   });
 
