@@ -212,6 +212,14 @@ const SCENARIOS: Scenario[] = [
       "maven-project/api",
     ],
   },
+  {
+    name: "cwd-is-workspace-root",
+    cwd: "root-as-cwd",
+    expected: [
+      "root-as-cwd/packages/core",
+      "root-as-cwd/packages/cli",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

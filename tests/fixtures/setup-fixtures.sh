@@ -514,4 +514,18 @@ echo '# Core library' > "$BASE/maven-project/core/AGENTS.md"
 echo '<project><artifactId>api</artifactId></project>' > "$BASE/maven-project/api/pom.xml"
 git -C "$BASE/maven-project" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 24: CWD is the workspace root itself
+# CWD: root-as-cwd (has workspaces field + packages)
+# Expected: root-as-cwd/packages/core, root-as-cwd/packages/cli
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/root-as-cwd/packages/core"
+mkdir -p "$BASE/root-as-cwd/packages/cli"
+
+echo '{"name": "root-mono", "workspaces": ["packages/*"]}' > "$BASE/root-as-cwd/package.json"
+echo '{"name": "core"}' > "$BASE/root-as-cwd/packages/core/package.json"
+echo '# Core rules' > "$BASE/root-as-cwd/packages/core/AGENTS.md"
+echo '{"name": "cli"}' > "$BASE/root-as-cwd/packages/cli/package.json"
+git -C "$BASE/root-as-cwd" init -q
+
 echo "Fixtures created at $BASE"
