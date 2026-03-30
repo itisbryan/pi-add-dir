@@ -20,8 +20,8 @@
  *   Shows active external directories above the editor
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import { Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import * as childProcess from "node:child_process";
 import * as crypto from "node:crypto";
@@ -140,6 +140,17 @@ function readTempState(cwd: string): AddedDir[] {
 }
 
 /**
+ * Remove the temp state file for a given cwd.
+ */
+function removeTempState(cwd: string): void {
+  try {
+    fs.unlinkSync(getTempStatePath(cwd));
+  } catch {
+    // Already gone or never existed
+  }
+}
+
+/**
  * Scan a directory for context files (AGENTS.md, CLAUDE.md), skills, and extensions.
  */
 function scanDirContext(dir: string): DirContext {
@@ -241,11 +252,32 @@ function collectSkillPaths(dirs: AddedDir[]): string[] {
   return skillPaths;
 }
 
+// ---------------------------------------------------------------------------
+// Context injection cache — avoids re-scanning the filesystem every turn
+// ---------------------------------------------------------------------------
+
+let contextCache: { dirs: string; injection: string } | null = null;
+
+/**
+ * Invalidate the context injection cache.
+ * Called when dirs are added/removed so the next turn re-scans.
+ */
+function invalidateContextCache(): void {
+  contextCache = null;
+}
+
 /**
  * Build the system prompt injection from all added directories.
+ * Cached by directory list — only re-scans when dirs change.
  */
 function buildContextInjection(dirs: AddedDir[]): string {
   if (dirs.length === 0) return "";
+
+  // Cache key: sorted absolute paths
+  const cacheKey = dirs.map(d => d.absolutePath).sort().join("\0");
+  if (contextCache && contextCache.dirs === cacheKey) {
+    return contextCache.injection;
+  }
 
   const sections: string[] = [];
   sections.push("\n\n## External Directories (added via pi-add-dir)");
@@ -288,7 +320,9 @@ function buildContextInjection(dirs: AddedDir[]): string {
     }
   }
 
-  return sections.join("\n");
+  const injection = sections.join("\n");
+  contextCache = { dirs: cacheKey, injection };
+  return injection;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +368,9 @@ export default function addDirExtension(pi: ExtensionAPI) {
       }
     }
 
+    // Invalidate cache since we may have switched sessions
+    invalidateContextCache();
+
     // Sync temp state file so resources_discover stays current
     writeTempState(currentCwd, addedDirs);
 
@@ -350,7 +387,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
   }
 
   // -----------------------------------------------------------------------
-  // Widget
+  // Widget — width-aware to prevent TUI overflow crashes
   // -----------------------------------------------------------------------
 
   function updateWidget(ctx: ExtensionContext) {
@@ -362,17 +399,39 @@ export default function addDirExtension(pi: ExtensionAPI) {
     }
 
     ctx.ui.setWidget("add-dir", (_tui, theme) => {
-      const parts = [
-        theme.fg("accent", "📂"),
-        theme.fg("muted", ` ${addedDirs.length} external dir${addedDirs.length === 1 ? "" : "s"}`),
-        theme.fg("dim", " │ "),
-      ];
+      return {
+        dispose() {},
+        invalidate() {},
+        render(width: number): string[] {
+          const prefix = theme.fg("accent", "📂");
+          const count = theme.fg("muted", ` ${addedDirs.length} external dir${addedDirs.length === 1 ? "" : "s"}`);
+          const sep = theme.fg("dim", " │ ");
+          const suffix = theme.fg("dim", "  (/dirs to manage)");
 
-      const dirLabels = addedDirs.map(d => theme.fg("text", d.label)).join(theme.fg("dim", ", "));
-      parts.push(dirLabels);
-      parts.push(theme.fg("dim", "  (/dirs to manage)"));
+          const dirLabels = addedDirs.map(d => theme.fg("text", d.label)).join(theme.fg("dim", ", "));
 
-      return new Text(parts.join(""), 0, 0);
+          const fullLine = ` ${prefix}${count}${sep}${dirLabels}${suffix}`;
+          const fullWidth = visibleWidth(fullLine);
+
+          if (fullWidth <= width) {
+            return [fullLine];
+          }
+
+          // Truncate dir labels to fit — keep prefix/count/sep/suffix, shrink the middle
+          const withoutLabels = ` ${prefix}${count}${sep}`;
+          const overhead = visibleWidth(withoutLabels) + visibleWidth(suffix);
+          const available = width - overhead;
+
+          if (available > 5) {
+            const truncatedLabels = truncateToWidth(dirLabels, available, "…");
+            return [`${withoutLabels}${truncatedLabels}${suffix}`];
+          }
+
+          // Extremely narrow — just show count
+          const minimal = ` ${prefix}${count}`;
+          return [truncateToWidth(minimal, width, "…")];
+        },
+      };
     });
   }
 
@@ -405,6 +464,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
 
     const label = path.basename(absolutePath);
     addedDirs.push({ absolutePath, label, addedAt: Date.now() });
+    invalidateContextCache();
     persistState(cwd);
     updateWidget(ctx);
 
@@ -421,7 +481,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
     const extensionHints: string[] = [];
     if (dirCtx.extensionPaths.length > 0) {
       extensionHints.push(
-        `⚡ Found ${dirCtx.extensionPaths.length} extension(s) in ${label}/.pi/extensions/.`,
+        `Found ${dirCtx.extensionPaths.length} extension(s) in ${label}/.pi/extensions/.`,
         `   To enable them, add to your settings.json:`,
         `   { "extensions": ["${absolutePath}/.pi/extensions"] }`,
         `   Then /reload to activate.`,
@@ -452,9 +512,9 @@ export default function addDirExtension(pi: ExtensionAPI) {
     const hadSkills = dirCtx.skills.size > 0;
 
     const removed = addedDirs.splice(idx, 1)[0];
+    invalidateContextCache();
     persistState();
     updateWidget(ctx);
-
 
     let message = `Removed ${removed.label} (${removed.absolutePath}).`;
     if (hadSkills) {
@@ -472,6 +532,13 @@ export default function addDirExtension(pi: ExtensionAPI) {
   pi.on("session_fork", async (_e, ctx) => reconstructState(ctx));
   pi.on("session_tree", async (_e, ctx) => reconstructState(ctx));
 
+  // Clean up temp state file on shutdown
+  pi.on("session_shutdown", async () => {
+    if (currentCwd) {
+      removeTempState(currentCwd);
+    }
+  });
+
   // -----------------------------------------------------------------------
   // System prompt injection
   // -----------------------------------------------------------------------
@@ -483,17 +550,6 @@ export default function addDirExtension(pi: ExtensionAPI) {
     return {
       systemPrompt: event.systemPrompt + injection,
     };
-  });
-
-  // -----------------------------------------------------------------------
-  // Internal reload command (used by tools to trigger reload)
-  // -----------------------------------------------------------------------
-
-  pi.registerCommand("_add-dir-reload", {
-    description: "Internal: reload pi to discover skills from external directories",
-    handler: async (_args, ctx) => {
-      await ctx.reload();
-    },
   });
 
   // -----------------------------------------------------------------------
@@ -527,6 +583,13 @@ export default function addDirExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("remove-dir", {
     description: "Remove an external directory from this session",
+    getArgumentCompletions(prefix: string) {
+      if (addedDirs.length === 0) return null;
+      const lower = prefix.toLowerCase();
+      return addedDirs
+        .filter(d => d.label.toLowerCase().startsWith(lower) || d.absolutePath.toLowerCase().startsWith(lower))
+        .map(d => ({ label: d.label, value: d.absolutePath, description: d.absolutePath }));
+    },
     handler: async (args, ctx) => {
       if (addedDirs.length === 0) {
         ctx.ui.notify("No external directories added.", "info");
@@ -536,7 +599,10 @@ export default function addDirExtension(pi: ExtensionAPI) {
       let absolutePath: string | undefined;
 
       if (args?.trim()) {
-        absolutePath = resolveDir(args.trim(), ctx.cwd);
+        // Support both labels and paths
+        const input = args.trim();
+        const byLabel = addedDirs.find(d => d.label === input);
+        absolutePath = byLabel ? byLabel.absolutePath : resolveDir(input, ctx.cwd);
       } else {
         // Interactive: pick from list
         const choices = addedDirs.map(d => `${d.label} — ${d.absolutePath}`);
@@ -573,7 +639,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
         if (dirCtx.agentsMd) badges.push("AGENTS.md");
         if (dirCtx.claudeMd) badges.push("CLAUDE.md");
         if (dirCtx.skills.size > 0) badges.push(`${dirCtx.skills.size} skill(s)`);
-        if (dirCtx.extensionPaths.length > 0) badges.push(`${dirCtx.extensionPaths.length} extension(s) ⚡`);
+        if (dirCtx.extensionPaths.length > 0) badges.push(`${dirCtx.extensionPaths.length} extension(s)`);
 
         lines.push(`  📂 ${dir.label}`);
         lines.push(`     ${dir.absolutePath}`);
@@ -585,7 +651,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
           lines.push(`     Skills: ${skillNames}`);
         }
         if (dirCtx.extensionPaths.length > 0) {
-          lines.push(`     ⚡ Extensions found — add to settings.json to enable`);
+          lines.push(`     Extensions found — add to settings.json to enable`);
         }
         lines.push("");
       }
@@ -644,14 +710,22 @@ export default function addDirExtension(pi: ExtensionAPI) {
         response.push("Skills will be registered as /skill:name commands after reload.");
       }
       if (dirCtx.extensionPaths.length > 0) {
-        response.push(`\n⚡ Found ${dirCtx.extensionPaths.length} extension(s) in .pi/extensions/.`);
+        response.push(`\nFound ${dirCtx.extensionPaths.length} extension(s) in .pi/extensions/.`);
         response.push(`To enable: add "${resolveDir(dirPath, ctx.cwd)}/.pi/extensions" to settings.json extensions array, then /reload.`);
       }
       response.push(`\nYou can now access files at: ${resolveDir(dirPath, ctx.cwd)}`);
 
       // Trigger reload if skills found so they register as /skill:name
       if (dirCtx.skills.size > 0) {
-        pi.sendUserMessage("/_add-dir-reload", { deliverAs: "followUp" });
+        // Use sendMessage to trigger reload without polluting command autocomplete
+        pi.sendMessage(
+          { customType: "add-dir:reload", content: [], display: "none" },
+          { triggerTurn: false },
+        );
+        // Schedule the actual reload via a brief delay to let the tool result render first
+        setTimeout(() => {
+          pi.sendUserMessage("/reload", { deliverAs: "followUp" });
+        }, 100);
         response.push("\nTriggering reload to register skills as /skill:name commands...");
       }
 
@@ -668,7 +742,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
       };
     },
 
-    renderCall(args, theme, _context) {
+    renderCall(args, theme, context) {
       const dirPath = args.path?.replace(/^@/, "") ?? "";
       let text = theme.fg("toolTitle", theme.bold("add_directory "));
       text += theme.fg("accent", dirPath);
@@ -678,7 +752,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme, _context) {
+    renderResult(result, { expanded }, theme, context) {
       const details = result.details as {
         directory?: string;
         hasAgentsMd?: boolean;
@@ -704,7 +778,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
         badges.push(theme.fg("warning", `${details.skillCount} skills`));
       }
       if (details.extensionCount && details.extensionCount > 0) {
-        badges.push(theme.fg("dim", `${details.extensionCount} ext ⚡`));
+        badges.push(theme.fg("dim", `${details.extensionCount} ext`));
       }
       if (badges.length > 0) {
         parts.push(theme.fg("dim", " │ ") + badges.join(theme.fg("dim", ", ")));
@@ -746,7 +820,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
       ),
     }),
 
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
       if (addedDirs.length === 0) {
         throw new Error("No external directories added. Use /add-dir or add_directory first.");
       }
