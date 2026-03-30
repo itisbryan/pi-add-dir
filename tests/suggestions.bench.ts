@@ -171,6 +171,15 @@ const SCENARIOS: Scenario[] = [
       "ts-refs/packages/utils",
     ],
   },
+  {
+    name: "pnpm-workspace",
+    cwd: "pnpm-mono/apps/web",
+    expected: [
+      "pnpm-mono/packages/ui",
+      "pnpm-mono/packages/utils",
+      "pnpm-mono/apps/admin",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

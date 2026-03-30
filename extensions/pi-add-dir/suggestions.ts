@@ -184,7 +184,7 @@ function findGitRoot(cwd: string): string | null {
 function findWorkspaceRoot(cwd: string): string | null {
   let current = cwd;
   while (true) {
-    // npm/yarn/pnpm workspaces
+    // npm/yarn workspaces (via package.json)
     const pkg = readFileSafe(path.join(current, "package.json"));
     if (pkg) {
       try {
@@ -192,6 +192,8 @@ function findWorkspaceRoot(cwd: string): string | null {
         if (parsed.workspaces) return current;
       } catch { /* skip */ }
     }
+    // pnpm workspaces (pnpm-workspace.yaml)
+    if (fileExists(path.join(current, "pnpm-workspace.yaml"))) return current;
     // Cargo workspace
     const cargo = readFileSafe(path.join(current, "Cargo.toml"));
     if (cargo && cargo.includes("[workspace]")) return current;
@@ -542,6 +544,51 @@ function collectWorkspaceMembers(cwd: string): Candidate[] {
         }
       }
     } catch { /* skip */ }
+  }
+
+  // --- pnpm workspaces (pnpm-workspace.yaml) ---
+  const pnpmWs = readFileSafe(path.join(wsRoot, "pnpm-workspace.yaml"));
+  if (pnpmWs) {
+    // Parse YAML-like patterns: lines starting with "- " under "packages:"
+    // Format:
+    //   packages:
+    //     - 'packages/*'
+    //     - 'apps/*'
+    const packageLines = pnpmWs.match(/packages:\s*\n((?:\s+-\s*.+\n?)*)/)?.[1] ?? "";
+    const patterns = [...packageLines.matchAll(/^\s*-\s*['"]?([^'"\s]+)['"]?/gm)]
+      .map(m => m[1]);
+
+    for (const pattern of patterns) {
+      if (pattern.endsWith("/*")) {
+        const baseDir = path.join(wsRoot, pattern.slice(0, -2));
+        if (dirExists(baseDir)) {
+          try {
+            const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+            for (const entry of entries) {
+              if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+              const fullPath = path.join(baseDir, entry.name);
+              if (fullPath === cwd) continue;
+              if (isProject(fullPath)) {
+                candidates.push({
+                  dir: fullPath,
+                  reasons: ["pnpm workspace member"],
+                  weight: 0.5,
+                });
+              }
+            }
+          } catch { /* skip */ }
+        }
+      } else {
+        const fullPath = resolvePath(wsRoot, pattern);
+        if (fullPath !== cwd && dirExists(fullPath) && isProject(fullPath)) {
+          candidates.push({
+            dir: fullPath,
+            reasons: ["pnpm workspace member"],
+            weight: 0.5,
+          });
+        }
+      }
+    }
   }
 
   // --- Cargo workspace ---

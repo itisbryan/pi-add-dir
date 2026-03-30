@@ -392,4 +392,28 @@ echo '# Type definitions' > "$BASE/ts-refs/packages/types/AGENTS.md"
 echo '{"name": "utils"}' > "$BASE/ts-refs/packages/utils/package.json"
 git -C "$BASE/ts-refs" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 19: pnpm workspace (pnpm-workspace.yaml, no package.json workspaces)
+# CWD: pnpm-mono/apps/web
+# Expected: pnpm-mono/packages/ui, pnpm-mono/packages/utils, pnpm-mono/apps/admin
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/pnpm-mono/apps/web"
+mkdir -p "$BASE/pnpm-mono/apps/admin"
+mkdir -p "$BASE/pnpm-mono/packages/ui"
+mkdir -p "$BASE/pnpm-mono/packages/utils"
+
+# No workspaces field in package.json — only pnpm-workspace.yaml
+echo '{"name": "pnpm-mono"}' > "$BASE/pnpm-mono/package.json"
+cat > "$BASE/pnpm-mono/pnpm-workspace.yaml" << 'EOF'
+packages:
+  - 'packages/*'
+  - 'apps/*'
+EOF
+echo '{"name": "web"}' > "$BASE/pnpm-mono/apps/web/package.json"
+echo '{"name": "admin"}' > "$BASE/pnpm-mono/apps/admin/package.json"
+echo '{"name": "ui"}' > "$BASE/pnpm-mono/packages/ui/package.json"
+echo '# UI library' > "$BASE/pnpm-mono/packages/ui/AGENTS.md"
+echo '{"name": "utils"}' > "$BASE/pnpm-mono/packages/utils/package.json"
+git -C "$BASE/pnpm-mono" init -q
+
 echo "Fixtures created at $BASE"
