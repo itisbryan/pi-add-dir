@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="520" viewBox="0 0 820 520">
+  <style>
+    @font-face { font-family: 'Mono'; src: local('SF Mono'), local('Menlo'), local('Consolas'), local('monospace'); }
+    text { font-family: 'SF Mono', 'Menlo', 'Consolas', monospace; font-size: 13px; }
+    .dim { fill: #6b7280; }
+    .text { fill: #e5e7eb; }
+    .accent { fill: #60a5fa; }
+    .green { fill: #34d399; }
+    .yellow { fill: #fbbf24; }
+    .muted { fill: #9ca3af; }
+    .cyan { fill: #22d3ee; }
+    .bold { font-weight: bold; }
+    .title { font-size: 13px; font-weight: bold; }
+  </style>
+
+  <!-- Window chrome -->
+  <rect width="820" height="520" rx="10" fill="#1a1b26"/>
+  <rect width="820" height="36" rx="10" fill="#24283b"/>
+  <rect y="26" width="820" height="10" fill="#24283b"/>
+  <circle cx="20" cy="18" r="6" fill="#f7768e"/>
+  <circle cx="40" cy="18" r="6" fill="#e0af68"/>
+  <circle cx="60" cy="18" r="6" fill="#9ece6a"/>
+  <text x="410" y="22" text-anchor="middle" class="muted title">pi — ~/my-project</text>
+
+  <!-- Widget bar -->
+  <rect x="0" y="36" width="820" height="28" fill="#1e2030"/>
+  <text x="14" y="55" class="text">📂</text>
+  <text x="34" y="55" class="muted"> 2 external dirs</text>
+  <text x="172" y="55" class="dim"> │ </text>
+  <text x="190" y="55" class="text">shared-library</text>
+  <text x="303" y="55" class="dim">, </text>
+  <text x="313" y="55" class="text">design-system</text>
+  <text x="440" y="55" class="dim">  (/dirs to manage)</text>
+
+  <!-- Terminal content -->
+  <!-- Command 1: /add-dir -->
+  <text x="14" y="90" class="accent bold">❯</text>
+  <text x="28" y="90" class="cyan">/add-dir</text>
+  <text x="93" y="90" class="text"> ../shared-library</text>
+
+  <text x="14" y="112" class="green">✓</text>
+  <text x="28" y="112" class="text"> Added </text>
+  <text x="78" y="112" class="accent">shared-library</text>
+  <text x="205" y="112" class="text"> (</text>
+  <text x="213" y="112" class="dim">/Users/me/shared-library</text>
+  <text x="453" y="112" class="text">)</text>
+  <text x="14" y="130" class="text">  Found: </text>
+  <text x="82" y="130" class="yellow">AGENTS.md</text>
+  <text x="162" y="130" class="dim">, </text>
+  <text x="172" y="130" class="yellow">3 skill(s)</text>
+  <text x="14" y="148" class="muted">  Reloading to register skills as /skill:name commands...</text>
+
+  <!-- Command 2: /dirs -->
+  <text x="14" y="180" class="accent bold">❯</text>
+  <text x="28" y="180" class="cyan">/dirs</text>
+
+  <text x="14" y="204" class="muted">External directories (2):</text>
+
+  <text x="14" y="230" class="text">  📂 </text>
+  <text x="48" y="230" class="accent bold">shared-library</text>
+  <text x="14" y="250" class="dim">     /Users/me/shared-library</text>
+  <text x="14" y="270" class="text">     Found: </text>
+  <text x="82" y="270" class="yellow">AGENTS.md</text>
+  <text x="162" y="270" class="dim">, </text>
+  <text x="172" y="270" class="yellow">3 skill(s)</text>
+  <text x="14" y="290" class="text">     Skills: </text>
+  <text x="88" y="290" class="cyan">/skill:api-client</text>
+  <text x="228" y="290" class="dim">, </text>
+  <text x="238" y="290" class="cyan">/skill:db-migrate</text>
+  <text x="378" y="290" class="dim">, </text>
+  <text x="388" y="290" class="cyan">/skill:test-helpers</text>
+
+  <text x="14" y="320" class="text">  📂 </text>
+  <text x="48" y="320" class="accent bold">design-system</text>
+  <text x="14" y="340" class="dim">     /Users/me/design-system</text>
+  <text x="14" y="360" class="text">     Found: </text>
+  <text x="82" y="360" class="yellow">CLAUDE.md</text>
+  <text x="162" y="360" class="dim">, </text>
+  <text x="172" y="360" class="yellow">1 extension(s)</text>
+  <text x="276" y="360" class="text"> ⚡</text>
+  <text x="14" y="380" class="muted">     ⚡ Extensions found — add to settings.json to enable</text>
+
+  <!-- Command 3: Agent using tool -->
+  <text x="14" y="420" class="accent bold">❯</text>
+  <text x="28" y="420" class="text"> I need to check the shared library's auth module</text>
+
+  <text x="14" y="450" class="dim">  ┌ </text>
+  <text x="40" y="450" class="accent bold">add_directory </text>
+  <text x="160" y="450" class="green">/Users/me/libs/auth</text>
+  <text x="340" y="450" class="dim"> — need auth module context</text>
+  <text x="14" y="470" class="dim">  └ </text>
+  <text x="40" y="470" class="green">✓ Added auth</text>
+  <text x="134" y="470" class="dim"> │ </text>
+  <text x="148" y="470" class="accent">AGENTS.md</text>
+  <text x="228" y="470" class="dim">, </text>
+  <text x="238" y="470" class="yellow">2 skills</text>
+
+  <!-- Cursor -->
+  <text x="14" y="502" class="accent bold">❯</text>
+  <rect x="28" y="491" width="8" height="16" fill="#60a5fa" opacity="0.7">
+    <animate attributeName="opacity" values="0.7;0;0.7" dur="1.2s" repeatCount="indefinite"/>
+  </rect>
+</svg>

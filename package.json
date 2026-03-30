@@ -27,7 +27,8 @@
   "pi": {
     "extensions": [
       "./extensions"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/itisbryan/pi-add-dir/main/demo.svg"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",

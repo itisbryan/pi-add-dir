@@ -14,6 +14,10 @@ Skills from external directories are registered natively as `/skill:name` comman
 
 ---
 
+<p align="center">
+  <img src="demo.svg" alt="pi-add-dir in action" width="820">
+</p>
+
 ## Install
 
 ```bash
