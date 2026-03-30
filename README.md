@@ -88,6 +88,7 @@ When you run `/add-dir` without arguments, the extension analyzes your project s
 - **PHP Composer** — `path` repository references in `composer.json`
 - **Flutter/Dart** — `path:` dependencies in `pubspec.yaml`
 - **Swift PM** — `.package(path:)` local dependencies in `Package.swift`
+- **Elixir** — `{:dep, path: "..."}` in `mix.exs`
 - **Context-rich directories** — prioritizes dirs with `AGENTS.md`, `CLAUDE.md`, or skills
 
 Directories with context files get higher relevance scores, making the most useful suggestions appear first.
