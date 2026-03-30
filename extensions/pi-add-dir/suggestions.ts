@@ -153,16 +153,30 @@ function resolvePath(base: string, rel: string): string {
   }
 }
 
+/** Cache for git root lookups — avoids re-walking for every sibling */
+const gitRootCache = new Map<string, string | null>();
+
 /** Find the git root by walking up from cwd */
 function findGitRoot(cwd: string): string | null {
+  const cached = gitRootCache.get(cwd);
+  if (cached !== undefined) return cached;
+
   let current = cwd;
+  const visited: string[] = [cwd];
   while (true) {
     if (dirExists(path.join(current, ".git")) || fileExists(path.join(current, ".git"))) {
+      // Cache result for all visited paths
+      for (const v of visited) gitRootCache.set(v, current);
       return current;
     }
     const parent = path.dirname(current);
-    if (parent === current) return null;
+    if (parent === current) {
+      // No git root found — cache null for all visited
+      for (const v of visited) gitRootCache.set(v, null);
+      return null;
+    }
     current = parent;
+    visited.push(current);
   }
 }
 
@@ -601,6 +615,9 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
   const { cwd, alreadyAdded = [], maxResults = 10 } = options;
 
   if (!dirExists(cwd)) return [];
+
+  // Clear git root cache per call (paths may change between calls)
+  gitRootCache.clear();
 
   // Collect candidates from all heuristics
   const candidates: Candidate[] = [

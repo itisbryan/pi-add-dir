@@ -34,4 +34,14 @@ Python monorepo, extension projects, and Go workspace.
 - Keep latency under 50ms per scenario average
 
 ## What's Been Tried
-- **Baseline**: Initial implementation with 7 heuristic collectors + scoring with context bonuses.
+- **Baseline (F1=0.86)**: Initial 7 heuristic collectors. Perfect recall but precision issues — sibling collector was over-eager.
+- **Smart sibling filtering (F1→1.0)**: Same-repo check via git root, context-file boost, >3 sibling threshold to prune unrelated projects.
+- **Ancestor exclusion**: Filter dirs that are ancestors of cwd (prevents suggesting `packages/ui` when inside `packages/ui/src/components`).
+- **16 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap.
+- **Integration**: `/add-dir` shows interactive picker with suggestions, `/suggest-dirs` command.
+
+## Key Insights
+- Sibling count threshold (>3 = "projects folder") is the critical heuristic for precision
+- Git root sharing is the strongest signal for sibling relevance
+- Context files (AGENTS.md/CLAUDE.md) should always boost a suggestion regardless of other signals
+- Ancestor exclusion is essential for deeply nested cwds
