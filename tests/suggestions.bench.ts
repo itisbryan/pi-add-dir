@@ -267,6 +267,14 @@ const SCENARIOS: Scenario[] = [
       "symlink-test/real-lib",
     ],
   },
+  {
+    name: "flutter-pubspec-paths",
+    cwd: "flutter-mono/apps/mobile",
+    expected: [
+      "flutter-mono/packages/core",
+      "flutter-mono/packages/ui",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

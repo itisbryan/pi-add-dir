@@ -489,6 +489,31 @@ function collectComposerPaths(cwd: string): Candidate[] {
 }
 
 /**
+ * Collect Dart/Flutter pubspec.yaml path dependencies.
+ */
+function collectPubspecPaths(cwd: string): Candidate[] {
+  const pubspec = readFileSafe(path.join(cwd, "pubspec.yaml"));
+  if (!pubspec) return [];
+
+  const candidates: Candidate[] = [];
+  // Match: path: ../some/package (under dependency_overrides or dependencies)
+  const pathRegex = /path:\s*['"]?(\.\.\/[^'"\s]+|\.\/.+)['"]?/g;
+  let match;
+  while ((match = pathRegex.exec(pubspec)) !== null) {
+    const relPath = match[1];
+    const resolved = resolvePath(cwd, relPath);
+    if (dirExists(resolved)) {
+      candidates.push({
+        dir: resolved,
+        reasons: ["pubspec.yaml path dependency"],
+        weight: 0.6,
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
  * Collect tsconfig.json project references (composite projects).
  */
 function collectTsProjectRefs(cwd: string): Candidate[] {
@@ -935,6 +960,7 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
     ...collectNpmFileDeps(cwd),
     ...collectTsProjectRefs(cwd),
     ...collectComposerPaths(cwd),
+    ...collectPubspecPaths(cwd),
     ...collectGemfilePaths(cwd),
     ...collectCargoPaths(cwd),
     ...collectPythonPaths(cwd),

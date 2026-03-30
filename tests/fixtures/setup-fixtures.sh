@@ -662,4 +662,30 @@ echo '# Real lib rules' > "$BASE/symlink-test/real-lib/AGENTS.md"
 ln -sf real-lib "$BASE/symlink-test/lib"  # symlink lib -> real-lib
 git -C "$BASE/symlink-test/app" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 31: Flutter/Dart monorepo with pubspec.yaml path deps
+# CWD: flutter-mono/apps/mobile
+# Expected: flutter-mono/packages/core, flutter-mono/packages/ui
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/flutter-mono/apps/mobile"
+mkdir -p "$BASE/flutter-mono/packages/core"
+mkdir -p "$BASE/flutter-mono/packages/ui"
+
+cat > "$BASE/flutter-mono/apps/mobile/pubspec.yaml" << 'EOF'
+name: mobile
+dependencies:
+  core:
+    path: ../../packages/core
+  ui:
+    path: ../../packages/ui
+EOF
+cat > "$BASE/flutter-mono/packages/core/pubspec.yaml" << 'EOF'
+name: core
+EOF
+echo '# Core package' > "$BASE/flutter-mono/packages/core/AGENTS.md"
+cat > "$BASE/flutter-mono/packages/ui/pubspec.yaml" << 'EOF'
+name: ui
+EOF
+git -C "$BASE/flutter-mono" init -q
+
 echo "Fixtures created at $BASE"
