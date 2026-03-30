@@ -82,6 +82,7 @@ When you run `/add-dir` without arguments, the extension analyzes your project s
 - **TypeScript project references** — `references` in `tsconfig.json`
 - **Docker Compose services** — `build.context` paths
 - **Gradle project modules** — `include()` in `settings.gradle(.kts)`
+- **Maven multi-module** — `<modules>` in `pom.xml`
 - **Context-rich directories** — prioritizes dirs with `AGENTS.md`, `CLAUDE.md`, or skills
 
 Directories with context files get higher relevance scores, making the most useful suggestions appear first.
