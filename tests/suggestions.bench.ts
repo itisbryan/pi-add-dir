@@ -204,6 +204,14 @@ const SCENARIOS: Scenario[] = [
       "nx-mono/apps/backend",
     ],
   },
+  {
+    name: "maven-multi-module",
+    cwd: "maven-project/web",
+    expected: [
+      "maven-project/core",
+      "maven-project/api",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

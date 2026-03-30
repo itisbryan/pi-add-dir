@@ -487,4 +487,31 @@ echo '# Shared conventions' > "$BASE/nx-mono/libs/shared/AGENTS.md"
 echo '{}' > "$BASE/nx-mono/nx.json"
 git -C "$BASE/nx-mono" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 23: Maven multi-module
+# CWD: maven-project/web
+# Expected: maven-project/core, maven-project/api
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/maven-project/web/src"
+mkdir -p "$BASE/maven-project/core/src"
+mkdir -p "$BASE/maven-project/api/src"
+
+cat > "$BASE/maven-project/pom.xml" << 'EOF'
+<project>
+  <groupId>com.example</groupId>
+  <artifactId>parent</artifactId>
+  <packaging>pom</packaging>
+  <modules>
+    <module>web</module>
+    <module>core</module>
+    <module>api</module>
+  </modules>
+</project>
+EOF
+echo '<project><artifactId>web</artifactId></project>' > "$BASE/maven-project/web/pom.xml"
+echo '<project><artifactId>core</artifactId></project>' > "$BASE/maven-project/core/pom.xml"
+echo '# Core library' > "$BASE/maven-project/core/AGENTS.md"
+echo '<project><artifactId>api</artifactId></project>' > "$BASE/maven-project/api/pom.xml"
+git -C "$BASE/maven-project" init -q
+
 echo "Fixtures created at $BASE"

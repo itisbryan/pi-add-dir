@@ -201,6 +201,9 @@ function findWorkspaceRoot(cwd: string): string | null {
     if (fileExists(path.join(current, "go.work"))) return current;
     // Gradle multi-project
     if (fileExists(path.join(current, "settings.gradle")) || fileExists(path.join(current, "settings.gradle.kts"))) return current;
+    // Maven multi-module (pom.xml with <modules>)
+    const pomXml = readFileSafe(path.join(current, "pom.xml"));
+    if (pomXml && pomXml.includes("<modules>")) return current;
     // Python monorepo (pyproject.toml at root with multiple sub-projects)
     if (fileExists(path.join(current, "pyproject.toml")) && current !== cwd) {
       // Check if it's a parent that has sub-projects
@@ -661,6 +664,28 @@ function collectWorkspaceMembers(cwd: string): Candidate[] {
       }
     }
     break; // Only process one settings file
+  }
+
+  // --- Maven multi-module (pom.xml) ---
+  const pom = readFileSafe(path.join(wsRoot, "pom.xml"));
+  if (pom) {
+    // Match <module>subdir</module> inside <modules> block
+    const modulesMatch = pom.match(/<modules>([\s\S]*?)<\/modules>/);
+    if (modulesMatch) {
+      const moduleRegex = /<module>([^<]+)<\/module>/g;
+      let mMatch;
+      while ((mMatch = moduleRegex.exec(modulesMatch[1])) !== null) {
+        const modulePath = mMatch[1].trim();
+        const fullPath = resolvePath(wsRoot, modulePath);
+        if (fullPath !== cwd && dirExists(fullPath)) {
+          candidates.push({
+            dir: fullPath,
+            reasons: ["Maven module"],
+            weight: 0.5,
+          });
+        }
+      }
+    }
   }
 
   // --- Go workspace ---
