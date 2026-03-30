@@ -622,4 +622,30 @@ echo '# Auth package' > "$BASE/php-mono/packages/auth/AGENTS.md"
 echo '{"name": "app/mailer"}' > "$BASE/php-mono/packages/mailer/composer.json"
 git -C "$BASE/php-mono/app" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 29: Precision stress test — many irrelevant siblings with project markers
+# CWD: precision-test/my-app (only has file: dep on my-lib)
+# Expected: precision-test/my-lib ONLY
+# There are 8 other sibling projects — none should be suggested (>3 threshold)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/precision-test/my-app"
+mkdir -p "$BASE/precision-test/my-lib"
+mkdir -p "$BASE/precision-test/other-1"
+mkdir -p "$BASE/precision-test/other-2"
+mkdir -p "$BASE/precision-test/other-3"
+mkdir -p "$BASE/precision-test/other-4"
+mkdir -p "$BASE/precision-test/other-5"
+mkdir -p "$BASE/precision-test/other-6"
+mkdir -p "$BASE/precision-test/other-7"
+mkdir -p "$BASE/precision-test/other-8"
+
+echo '{"name": "my-app", "dependencies": {"my-lib": "file:../my-lib"}}' > "$BASE/precision-test/my-app/package.json"
+echo '{"name": "my-lib"}' > "$BASE/precision-test/my-lib/package.json"
+for i in 1 2 3 4 5 6 7 8; do
+  echo "{\"name\": \"other-$i\"}" > "$BASE/precision-test/other-$i/package.json"
+  git -C "$BASE/precision-test/other-$i" init -q
+done
+git -C "$BASE/precision-test/my-app" init -q
+git -C "$BASE/precision-test/my-lib" init -q
+
 echo "Fixtures created at $BASE"

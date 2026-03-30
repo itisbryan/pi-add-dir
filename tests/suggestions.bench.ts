@@ -252,6 +252,13 @@ const SCENARIOS: Scenario[] = [
       "php-mono/packages/mailer",
     ],
   },
+  {
+    name: "precision-stress-test",
+    cwd: "precision-test/my-app",
+    expected: [
+      "precision-test/my-lib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
