@@ -5,9 +5,10 @@ Optimize the quality of directory suggestions for the `/add-dir` command in pi-a
 The suggestion engine should surface relevant directories from the project environment
 using multiple heuristics (sibling projects, local deps, workspace members, submodules, etc.).
 
-The benchmark evaluates the algorithm against 26+ realistic project structure scenarios
+The benchmark evaluates the algorithm against 33 realistic project structure scenarios
 across npm, pnpm, Yarn Berry, Cargo, Go, Python/uv, Ruby, Elixir, Gradle, Maven,
-Docker Compose, TypeScript project refs, Swift, and adversarial edge cases.
+Docker Compose, TypeScript project refs, .NET, PHP, Swift, Flutter/Dart, and
+adversarial edge cases (deep nesting, symlinks, nested workspaces, precision stress).
 
 ## Metrics
 - **Primary**: `suggestion_f1` (unitless 0–1, higher is better) — F1 score across all scenarios
@@ -42,11 +43,16 @@ Docker Compose, TypeScript project refs, Swift, and adversarial edge cases.
 - **pnpm-workspace.yaml**: Parse packages patterns from pnpm's workspace config.
 - **Gradle multi-project**: Parse include() from settings.gradle(.kts) with colon-to-slash path conversion.
 - **Git root caching**: Cache findGitRoot results across sibling checks.
-- **Yarn Berry link:/portal:**: Parse link: and portal: protocols in package.json (in addition to file:).
+- **Yarn Berry link:/portal:**: Parse link: and portal: protocols in package.json.
 - **uv Python workspace**: Parse [tool.uv.workspace] members from pyproject.toml.
 - **Maven multi-module**: Parse pom.xml <modules> blocks.
-- **Expanded PROJECT_MARKERS**: Added build.gradle.kts, deno.json, project.json, Package.swift, pubspec.yaml.
-- **26 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap, Docker Compose, TS project refs, pnpm workspace, Gradle multi-project, combo heuristics.
+- **.NET solution**: Parse .sln project references with Windows path conversion.
+- **PHP Composer**: Parse path repository URLs from composer.json.
+- **Flutter/Dart**: Parse pubspec.yaml path: dependencies.
+- **Swift PM**: Parse Package.swift .package(path:) local deps.
+- **Expanded PROJECT_MARKERS**: Added build.gradle.kts, deno.json, project.json, Package.swift, pubspec.yaml, composer.json, .csproj/.fsproj.
+- **Depth limits**: 10-level cap on findGitRoot and findWorkspaceRoot.
+- **33 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap, Docker Compose, TS project refs, pnpm workspace, Gradle multi-project, combo heuristics, Nx monorepo, Maven, cwd-as-workspace-root, Yarn Berry, uv workspace, .NET solution, PHP Composer, precision stress, symlinked dep, Flutter, nested workspaces, Swift PM.
 - **Integration**: `/add-dir` shows interactive picker with suggestions, `/suggest-dirs` command.
 
 ## Key Insights
