@@ -112,16 +112,18 @@ function readFileSafe(filePath: string): string | null {
 }
 
 function isProject(dir: string): boolean {
-  if (PROJECT_MARKERS.some(marker => {
+  return PROJECT_MARKERS.some(marker => {
     try {
       fs.statSync(path.join(dir, marker));
       return true;
     } catch {
       return false;
     }
-  })) return true;
+  });
+}
 
-  // Check for .NET project files (*.csproj, *.fsproj, *.vbproj)
+/** Check if a dir is a .NET project (has *.csproj, *.fsproj, or *.vbproj). Separate from isProject to avoid readdirSync cost. */
+function isDotnetProject(dir: string): boolean {
   try {
     return fs.readdirSync(dir).some(f => DOTNET_PROJECT_EXTENSIONS.some(ext => f.endsWith(ext)));
   } catch {
