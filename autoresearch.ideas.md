@@ -1,27 +1,30 @@
 # Autoresearch Ideas: Directory Suggestions
 
-## Remaining ideas (low priority / niche)
+## Remaining ideas (diminishing returns)
 - **Bazel/Buck targets**: Parse BUILD files for local dependency references — very niche
 - **Import graph analysis**: Parse actual import statements — complex, slow, fragile
-- **Swift Package Manager local deps**: Parse Package.swift for `.package(path: "...")` — niche but could help iOS devs
-- **Flutter pub workspace**: Parse `pubspec.yaml` for path deps — Dart/Flutter ecosystem
+- **Flutter pub path deps**: Parse `pubspec.yaml` for `path:` dependencies — Dart/Flutter ecosystem
+- **Swift PM local deps**: Parse Package.swift for `.package(path: "...")` — niche
 
-## Completed ✅
-- ~~Docker compose references~~ ✅ (run 9)
-- ~~Caching git root lookups~~ ✅ (run 8)
-- ~~pnpm-workspace.yaml~~ ✅ (run 14)
-- ~~Gradle multi-project~~ ✅ (run 15)
-- ~~TypeScript project references~~ ✅ (run 12)
-- ~~Nx monorepo~~ ✅ covered by npm workspaces (run 19)
-- ~~Lerna~~ ✅ covered by npm workspaces
-- ~~isProject perf optimization~~ ✅ single statSync (run 18)
-- ~~Maven POM modules~~ ✅ (run 20)
-- ~~Yarn Berry link:/portal:~~ ✅ (run 25)
-- ~~uv Python workspace~~ ✅ (run 26)
-- ~~Marker reordering~~ ✅ (run 24)
-- ~~Package.swift / pubspec.yaml markers~~ ✅ (this session)
+## Completed ✅ (see git log for details)
+- Smart sibling filtering (run 2)
+- Ancestor exclusion (run 7)
+- Git root caching (run 8)
+- Docker compose (run 9)
+- TypeScript project refs (run 12)
+- pnpm-workspace.yaml (run 14)
+- Gradle multi-project (run 15)
+- isProject optimization (run 18)
+- Nx monorepo (run 19 — covered by npm workspaces)
+- Maven POM modules (run 20)
+- Lerna (covered by npm workspaces)
+- Yarn Berry link:/portal: (run 25)
+- uv Python workspace (run 26)
+- Package.swift/pubspec.yaml markers (run 27)
+- .NET solution (run 29)
+- PHP Composer (run 31)
+- Depth limits (run 28)
+- Marker reordering (run 24)
 
 ## Not worth pursuing
-- ~~.env references~~ — unlikely to contain useful directory paths
-- ~~Recently opened in editor~~ — platform-specific, fragile, privacy concern
-- ~~Parallel heuristic scanning~~ — not needed, each is <1ms
+- .env references, recently opened in editor, parallel heuristic scanning
