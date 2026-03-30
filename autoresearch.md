@@ -19,7 +19,8 @@ adversarial edge cases (deep nesting, symlinks, nested workspaces, precision str
 
 ## Files in Scope
 - `extensions/pi-add-dir/suggestions.ts` — the suggestion engine (all heuristics + scoring)
-- `tests/suggestions.bench.ts` — benchmark with 8 scenarios and expected results
+- `tests/suggestions.bench.ts` — benchmark with 39 scenarios and expected results
+- `tests/suggestions.test.ts` — 59 unit tests for the suggestion engine
 - `tests/fixtures/setup-fixtures.sh` — creates test project structures
 
 ## Off Limits
@@ -55,7 +56,7 @@ adversarial edge cases (deep nesting, symlinks, nested workspaces, precision str
 - **Elixir mix.exs path deps**: Parse {:dep, path: "..."} from mix.exs.
 - **Pre-scan optimization**: Single readdirSync per cwd + per findWorkspaceRoot level, skip collectors whose trigger files don't exist. Latency 1.85→0.78ms.
 - **Adversarial scenarios**: special chars in names, malformed configs, overlapping workspace configs, no-git projects.
-- **38 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap, Docker Compose, TS project refs, pnpm workspace, Gradle multi-project, combo heuristics, Nx monorepo, Maven, cwd-as-workspace-root, Yarn Berry, uv workspace, .NET solution, PHP Composer, precision stress, symlinked dep, Flutter, nested workspaces, Swift PM.
+- **39 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap, Docker Compose, TS project refs, pnpm workspace, Gradle multi-project, combo heuristics, Nx monorepo, Maven, cwd-as-workspace-root, Yarn Berry, uv workspace, .NET solution, PHP Composer, precision stress, symlinked dep, Flutter, nested workspaces, Swift PM, special chars, Elixir mix.exs, malformed config, overlapping configs, no-git sibling, workspace+submodules.
 - **Integration**: `/add-dir` shows interactive picker with suggestions, `/suggest-dirs` command.
 
 ## Key Insights

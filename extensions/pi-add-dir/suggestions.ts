@@ -151,6 +151,34 @@ function hasExtensions(dir: string): boolean {
   }
 }
 
+/**
+ * Helper: scan a file with a regex and collect matching paths as candidates.
+ * Each regex must have its path in capture group at `pathGroup` index (default 1).
+ */
+function collectPathsFromFile(
+  cwd: string,
+  fileName: string,
+  regex: RegExp,
+  reason: string,
+  weight: number,
+  pathGroup = 1,
+): Candidate[] {
+  const content = readFileSafe(path.join(cwd, fileName));
+  if (!content) return [];
+
+  const candidates: Candidate[] = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const relPath = match[pathGroup];
+    if (!relPath) continue;
+    const resolved = resolvePath(cwd, relPath);
+    if (dirExists(resolved)) {
+      candidates.push({ dir: resolved, reasons: [reason], weight });
+    }
+  }
+  return candidates;
+}
+
 /** Resolve a potentially relative path from a base directory */
 function resolvePath(base: string, rel: string): string {
   const resolved = path.isAbsolute(rel) ? rel : path.resolve(base, rel);
@@ -369,80 +397,20 @@ function collectNpmFileDeps(cwd: string): Candidate[] {
   return candidates;
 }
 
-/**
- * Collect path: gems from Gemfile.
- */
+/** Collect path: gems from Gemfile. */
 function collectGemfilePaths(cwd: string): Candidate[] {
-  const gemfile = readFileSafe(path.join(cwd, "Gemfile"));
-  if (!gemfile) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: gem 'name', path: 'some/path'  or  gem "name", path: "some/path"
-  const pathRegex = /gem\s+['"]([^'"]+)['"]\s*,\s*path:\s*['"]([^'"]+)['"]/g;
-  let match;
-  while ((match = pathRegex.exec(gemfile)) !== null) {
-    const gemName = match[1];
-    const relPath = match[2];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: [`Gemfile path dependency (${gemName})`],
-        weight: 0.6,
-      });
-    }
-  }
-  return candidates;
+  // Path is in capture group 2 (group 1 is the gem name)
+  return collectPathsFromFile(cwd, "Gemfile", /gem\s+['"]([^'"]+)['"]\s*,\s*path:\s*['"]([^'"]+)['"]/g, "Gemfile path dependency", 0.6, 2);
 }
 
-/**
- * Collect Cargo.toml path dependencies.
- */
+/** Collect Cargo.toml path dependencies. */
 function collectCargoPaths(cwd: string): Candidate[] {
-  const cargo = readFileSafe(path.join(cwd, "Cargo.toml"));
-  if (!cargo) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: path = "../something"
-  const pathRegex = /path\s*=\s*"([^"]+)"/g;
-  let match;
-  while ((match = pathRegex.exec(cargo)) !== null) {
-    const relPath = match[1];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: ["Cargo path dependency"],
-        weight: 0.6,
-      });
-    }
-  }
-  return candidates;
+  return collectPathsFromFile(cwd, "Cargo.toml", /path\s*=\s*"([^"]+)"/g, "Cargo path dependency", 0.6);
 }
 
-/**
- * Collect Python local file dependencies from pyproject.toml.
- */
+/** Collect Python local file dependencies from pyproject.toml. */
 function collectPythonPaths(cwd: string): Candidate[] {
-  const pyproject = readFileSafe(path.join(cwd, "pyproject.toml"));
-  if (!pyproject) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: something @ file:../../some/path
-  const fileRegex = /file:([^\s"',\]]+)/g;
-  let match;
-  while ((match = fileRegex.exec(pyproject)) !== null) {
-    const relPath = match[1];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: ["Python file dependency"],
-        weight: 0.6,
-      });
-    }
-  }
-  return candidates;
+  return collectPathsFromFile(cwd, "pyproject.toml", /file:([^\s"',\]]+)/g, "Python file dependency", 0.6);
 }
 
 /**
@@ -496,105 +464,25 @@ function collectComposerPaths(cwd: string): Candidate[] {
   return candidates;
 }
 
-/**
- * Collect Elixir mix.exs path dependencies.
- */
+/** Collect Elixir mix.exs path dependencies. */
 function collectMixPaths(cwd: string): Candidate[] {
-  const mixExs = readFileSafe(path.join(cwd, "mix.exs"));
-  if (!mixExs) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: {:dep_name, path: "../../libs/shared"}
-  const pathRegex = /\{:\w+\s*,\s*path:\s*"([^"]+)"/g;
-  let match;
-  while ((match = pathRegex.exec(mixExs)) !== null) {
-    const relPath = match[1];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: ["Elixir mix.exs path dependency"],
-        weight: 0.6,
-      });
-    }
-  }
-  return candidates;
+  return collectPathsFromFile(cwd, "mix.exs", /\{:\w+\s*,\s*path:\s*"([^"]+)"/g, "Elixir mix.exs path dependency", 0.6);
 }
 
-/**
- * Collect Swift Package Manager local package dependencies.
- */
+/** Collect Swift Package Manager local package dependencies. */
 function collectSwiftPMPaths(cwd: string): Candidate[] {
-  const packageSwift = readFileSafe(path.join(cwd, "Package.swift"));
-  if (!packageSwift) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: .package(path: "../some-package")
-  const pathRegex = /\.package\s*\(\s*(?:name:\s*"[^"]*"\s*,\s*)?path:\s*"([^"]+)"/g;
-  let match;
-  while ((match = pathRegex.exec(packageSwift)) !== null) {
-    const relPath = match[1];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: ["Swift PM local package"],
-        weight: 0.6,
-      });
-    }
-  }
-  return candidates;
+  return collectPathsFromFile(cwd, "Package.swift", /\.package\s*\(\s*(?:name:\s*"[^"]*"\s*,\s*)?path:\s*"([^"]+)"/g, "Swift PM local package", 0.6);
 }
 
-/**
- * Collect Dart/Flutter pubspec.yaml path dependencies.
- */
+/** Collect Dart/Flutter pubspec.yaml path dependencies. */
 function collectPubspecPaths(cwd: string): Candidate[] {
-  const pubspec = readFileSafe(path.join(cwd, "pubspec.yaml"));
-  if (!pubspec) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: path: ../some/package (under dependency_overrides or dependencies)
-  const pathRegex = /path:\s*['"]?(\.\.\/[^'"\s]+|\.\/.+)['"]?/g;
-  let match;
-  while ((match = pathRegex.exec(pubspec)) !== null) {
-    const relPath = match[1];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: ["pubspec.yaml path dependency"],
-        weight: 0.6,
-      });
-    }
-  }
-  return candidates;
+  return collectPathsFromFile(cwd, "pubspec.yaml", /path:\s*['"]?(\.\.\/[^'"\s]+|\.\/.+)['"]?/g, "pubspec.yaml path dependency", 0.6);
 }
 
-/**
- * Collect tsconfig.json project references (composite projects).
- */
+/** Collect tsconfig.json project references (composite projects). */
 function collectTsProjectRefs(cwd: string): Candidate[] {
-  const tsconfig = readFileSafe(path.join(cwd, "tsconfig.json"));
-  if (!tsconfig) return [];
-
-  const candidates: Candidate[] = [];
-  // Match: { "path": "../some-package" } in references array
-  // Use simple regex since tsconfig may have comments (not valid JSON)
-  const refRegex = /"path"\s*:\s*"([^"]+)"/g;
-  let match;
-  while ((match = refRegex.exec(tsconfig)) !== null) {
-    const relPath = match[1];
-    const resolved = resolvePath(cwd, relPath);
-    if (dirExists(resolved)) {
-      candidates.push({
-        dir: resolved,
-        reasons: ["TypeScript project reference"],
-        weight: 0.55,
-      });
-    }
-  }
-  return candidates;
+  // Use regex since tsconfig may have comments (not valid JSON)
+  return collectPathsFromFile(cwd, "tsconfig.json", /"path"\s*:\s*"([^"]+)"/g, "TypeScript project reference", 0.55);
 }
 
 /**
