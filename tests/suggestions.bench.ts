@@ -155,6 +155,14 @@ const SCENARIOS: Scenario[] = [
       "trap/my-lib",
     ],
   },
+  {
+    name: "docker-compose",
+    cwd: "docker-micro/gateway",
+    expected: [
+      "docker-micro/auth-service",
+      "docker-micro/user-service",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

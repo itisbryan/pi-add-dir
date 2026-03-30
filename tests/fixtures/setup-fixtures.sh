@@ -341,4 +341,30 @@ echo '# My lib' > "$BASE/trap/my-lib/AGENTS.md"
 git -C "$BASE/trap/my-app" init -q
 git -C "$BASE/trap/my-lib" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 17: Docker Compose microservices
+# CWD: docker-micro/gateway
+# Expected: docker-micro/auth-service, docker-micro/user-service
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/docker-micro/gateway"
+mkdir -p "$BASE/docker-micro/auth-service"
+mkdir -p "$BASE/docker-micro/user-service"
+
+echo '{"name": "gateway"}' > "$BASE/docker-micro/gateway/package.json"
+echo '{"name": "auth-service"}' > "$BASE/docker-micro/auth-service/package.json"
+echo '# Auth service' > "$BASE/docker-micro/auth-service/AGENTS.md"
+echo '{"name": "user-service"}' > "$BASE/docker-micro/user-service/package.json"
+cat > "$BASE/docker-micro/gateway/docker-compose.yml" << 'EOF'
+version: '3.8'
+services:
+  auth:
+    build:
+      context: ../auth-service
+  users:
+    build: ../user-service
+EOF
+git -C "$BASE/docker-micro/gateway" init -q
+git -C "$BASE/docker-micro/auth-service" init -q
+git -C "$BASE/docker-micro/user-service" init -q
+
 echo "Fixtures created at $BASE"

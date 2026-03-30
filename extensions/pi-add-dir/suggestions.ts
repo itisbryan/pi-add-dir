@@ -401,6 +401,38 @@ function collectPythonPaths(cwd: string): Candidate[] {
 }
 
 /**
+ * Collect Docker Compose build context paths.
+ */
+function collectDockerComposePaths(cwd: string): Candidate[] {
+  const composeNames = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"];
+  let composeContent: string | null = null;
+
+  for (const name of composeNames) {
+    composeContent = readFileSafe(path.join(cwd, name));
+    if (composeContent) break;
+  }
+  if (!composeContent) return [];
+
+  const candidates: Candidate[] = [];
+  // Match build context paths: build: ./path or build: { context: ./path }
+  // Simple pattern: lines with "context:" or "build:" followed by a relative path
+  const contextRegex = /(?:context|build):\s*['"]?(\.\.\/[^'"\s]+|\.\/[^'"\s]+)['"]?/g;
+  let match;
+  while ((match = contextRegex.exec(composeContent)) !== null) {
+    const relPath = match[1];
+    const resolved = resolvePath(cwd, relPath);
+    if (dirExists(resolved) && resolved !== resolvePath(cwd, ".")) {
+      candidates.push({
+        dir: resolved,
+        reasons: ["Docker Compose service"],
+        weight: 0.5,
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
  * Collect git submodule paths from .gitmodules.
  */
 function collectSubmodules(cwd: string): Candidate[] {
@@ -626,6 +658,7 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
     ...collectGemfilePaths(cwd),
     ...collectCargoPaths(cwd),
     ...collectPythonPaths(cwd),
+    ...collectDockerComposePaths(cwd),
     ...collectSubmodules(cwd),
     ...collectWorkspaceMembers(cwd),
   ];
