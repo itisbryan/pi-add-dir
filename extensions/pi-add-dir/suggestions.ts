@@ -480,6 +480,31 @@ function collectComposerPaths(cwd: string): Candidate[] {
 }
 
 /**
+ * Collect Elixir mix.exs path dependencies.
+ */
+function collectMixPaths(cwd: string): Candidate[] {
+  const mixExs = readFileSafe(path.join(cwd, "mix.exs"));
+  if (!mixExs) return [];
+
+  const candidates: Candidate[] = [];
+  // Match: {:dep_name, path: "../../libs/shared"}
+  const pathRegex = /\{:\w+\s*,\s*path:\s*"([^"]+)"/g;
+  let match;
+  while ((match = pathRegex.exec(mixExs)) !== null) {
+    const relPath = match[1];
+    const resolved = resolvePath(cwd, relPath);
+    if (dirExists(resolved)) {
+      candidates.push({
+        dir: resolved,
+        reasons: ["Elixir mix.exs path dependency"],
+        weight: 0.6,
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
  * Collect Swift Package Manager local package dependencies.
  */
 function collectSwiftPMPaths(cwd: string): Candidate[] {
@@ -978,6 +1003,7 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
     ...collectComposerPaths(cwd),
     ...collectPubspecPaths(cwd),
     ...collectSwiftPMPaths(cwd),
+    ...collectMixPaths(cwd),
     ...collectGemfilePaths(cwd),
     ...collectCargoPaths(cwd),
     ...collectPythonPaths(cwd),

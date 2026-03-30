@@ -290,6 +290,22 @@ const SCENARIOS: Scenario[] = [
       "swift-project/NetworkLib",
     ],
   },
+  {
+    name: "special-chars-in-names",
+    cwd: "special chars/My App",
+    expected: [
+      "special chars/My Lib",
+      "special chars/Core Module",
+    ],
+  },
+  {
+    name: "elixir-mix-path-deps",
+    cwd: "elixir-deps/apps/web",
+    expected: [
+      "elixir-deps/libs/shared",
+      "elixir-deps/apps/core",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -732,4 +732,50 @@ echo '# Core Library' > "$BASE/swift-project/CoreLib/AGENTS.md"
 echo '// swift-tools-version:5.9' > "$BASE/swift-project/NetworkLib/Package.swift"
 git -C "$BASE/swift-project" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 34: Directory names with spaces and special chars
+# CWD: "special chars/My App"
+# Expected: "special chars/My Lib" (file: dep), "special chars/Core Module" (sibling + AGENTS.md)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/special chars/My App"
+mkdir -p "$BASE/special chars/My Lib"
+mkdir -p "$BASE/special chars/Core Module"
+
+echo '{"name": "my-app", "dependencies": {"my-lib": "file:../My Lib"}}' > "$BASE/special chars/My App/package.json"
+echo '{"name": "my-lib"}' > "$BASE/special chars/My Lib/package.json"
+echo '{"name": "core-module"}' > "$BASE/special chars/Core Module/package.json"
+echo '# Core rules' > "$BASE/special chars/Core Module/AGENTS.md"
+git -C "$BASE/special chars/My App" init -q
+git -C "$BASE/special chars/My Lib" init -q
+git -C "$BASE/special chars/Core Module" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 35: Elixir umbrella with mix.exs path deps
+# CWD: elixir-deps/apps/web
+# Expected: elixir-deps/apps/core (sibling + AGENTS.md), elixir-deps/libs/shared (path dep)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/elixir-deps/apps/web"
+mkdir -p "$BASE/elixir-deps/apps/core"
+mkdir -p "$BASE/elixir-deps/libs/shared"
+
+cat > "$BASE/elixir-deps/apps/web/mix.exs" << 'MIXEOF'
+defmodule Web.MixProject do
+  use Mix.Project
+  def project do
+    [app: :web, deps: deps()]
+  end
+  defp deps do
+    [
+      {:shared, path: "../../libs/shared"},
+      {:core, in_umbrella: true}
+    ]
+  end
+end
+MIXEOF
+touch "$BASE/elixir-deps/apps/core/mix.exs"
+echo '# Core app' > "$BASE/elixir-deps/apps/core/AGENTS.md"
+touch "$BASE/elixir-deps/libs/shared/mix.exs"
+echo '# Shared lib' > "$BASE/elixir-deps/libs/shared/CLAUDE.md"
+git -C "$BASE/elixir-deps" init -q
+
 echo "Fixtures created at $BASE"
