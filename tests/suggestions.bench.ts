@@ -259,6 +259,14 @@ const SCENARIOS: Scenario[] = [
       "precision-test/my-lib",
     ],
   },
+  {
+    name: "symlinked-dep",
+    cwd: "symlink-test/app",
+    expected: [
+      // resolvePath uses realpathSync, so the symlink resolves to real-lib
+      "symlink-test/real-lib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

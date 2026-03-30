@@ -648,4 +648,18 @@ done
 git -C "$BASE/precision-test/my-app" init -q
 git -C "$BASE/precision-test/my-lib" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 30: Symlinked dependency
+# CWD: symlink-test/app (depends on ../lib which is a symlink to real-lib)
+# Expected: the resolved real-lib path
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/symlink-test/app"
+mkdir -p "$BASE/symlink-test/real-lib"
+
+echo '{"name": "app", "dependencies": {"lib": "file:../lib"}}' > "$BASE/symlink-test/app/package.json"
+echo '{"name": "real-lib"}' > "$BASE/symlink-test/real-lib/package.json"
+echo '# Real lib rules' > "$BASE/symlink-test/real-lib/AGENTS.md"
+ln -sf real-lib "$BASE/symlink-test/lib"  # symlink lib -> real-lib
+git -C "$BASE/symlink-test/app" init -q
+
 echo "Fixtures created at $BASE"
