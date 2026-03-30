@@ -314,6 +314,13 @@ const SCENARIOS: Scenario[] = [
       "malformed/lib",
     ],
   },
+  {
+    name: "overlapping-workspace-configs",
+    cwd: "overlap-ws/packages/app",
+    expected: [
+      "overlap-ws/packages/lib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

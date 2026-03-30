@@ -794,4 +794,22 @@ echo '# Lib rules' > "$BASE/malformed/lib/AGENTS.md"
 git -C "$BASE/malformed/app" init -q
 git -C "$BASE/malformed/lib" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 37: Overlapping workspace configs (npm + pnpm at same root)
+# CWD: overlap-ws/packages/app
+# Expected: overlap-ws/packages/lib (should appear only once despite both configs)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/overlap-ws/packages/app"
+mkdir -p "$BASE/overlap-ws/packages/lib"
+
+echo '{"name": "overlap", "workspaces": ["packages/*"]}' > "$BASE/overlap-ws/package.json"
+cat > "$BASE/overlap-ws/pnpm-workspace.yaml" << 'EOF'
+packages:
+  - 'packages/*'
+EOF
+echo '{"name": "app"}' > "$BASE/overlap-ws/packages/app/package.json"
+echo '{"name": "lib"}' > "$BASE/overlap-ws/packages/lib/package.json"
+echo '# Lib' > "$BASE/overlap-ws/packages/lib/AGENTS.md"
+git -C "$BASE/overlap-ws" init -q
+
 echo "Fixtures created at $BASE"
