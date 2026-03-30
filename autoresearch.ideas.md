@@ -1,9 +1,10 @@
 # Autoresearch Ideas: Directory Suggestions
 
-## Remaining ideas (low priority)
-- **Bazel/Buck targets**: Parse BUILD files for local dependency references — very niche ecosystem
-- **Import graph analysis**: Parse actual import statements to find referenced paths — complex, slow, fragile
-- **Maven POM parent/module references**: Parse `pom.xml` for `<modules>` and `<parent>` — would cover JVM Maven projects
+## Remaining ideas (low priority / niche)
+- **Bazel/Buck targets**: Parse BUILD files for local dependency references — very niche
+- **Import graph analysis**: Parse actual import statements — complex, slow, fragile
+- **Swift Package Manager local deps**: Parse Package.swift for `.package(path: "...")` — niche but could help iOS devs
+- **Flutter pub workspace**: Parse `pubspec.yaml` for path deps — Dart/Flutter ecosystem
 
 ## Completed ✅
 - ~~Docker compose references~~ ✅ (run 9)
@@ -11,9 +12,14 @@
 - ~~pnpm-workspace.yaml~~ ✅ (run 14)
 - ~~Gradle multi-project~~ ✅ (run 15)
 - ~~TypeScript project references~~ ✅ (run 12)
-- ~~Nx monorepo~~ ✅ covered by existing npm workspaces (run 19)
-- ~~Lerna~~ ✅ covered by existing npm workspaces (Lerna uses package.json workspaces)
+- ~~Nx monorepo~~ ✅ covered by npm workspaces (run 19)
+- ~~Lerna~~ ✅ covered by npm workspaces
 - ~~isProject perf optimization~~ ✅ single statSync (run 18)
+- ~~Maven POM modules~~ ✅ (run 20)
+- ~~Yarn Berry link:/portal:~~ ✅ (run 25)
+- ~~uv Python workspace~~ ✅ (run 26)
+- ~~Marker reordering~~ ✅ (run 24)
+- ~~Package.swift / pubspec.yaml markers~~ ✅ (this session)
 
 ## Not worth pursuing
 - ~~.env references~~ — unlikely to contain useful directory paths

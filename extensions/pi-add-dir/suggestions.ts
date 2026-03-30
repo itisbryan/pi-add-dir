@@ -64,6 +64,8 @@ const PROJECT_MARKERS = [
   "setup.cfg",        // Python (legacy)
   "deno.json",        // Deno
   "project.json",     // Nx
+  "Package.swift",    // Swift PM
+  "pubspec.yaml",     // Dart/Flutter
 ];
 
 /** Files/dirs that make a directory extra valuable for pi-add-dir */
