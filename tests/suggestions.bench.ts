@@ -196,6 +196,14 @@ const SCENARIOS: Scenario[] = [
       "combo/packages/logger",
     ],
   },
+  {
+    name: "nx-monorepo",
+    cwd: "nx-mono/apps/frontend",
+    expected: [
+      "nx-mono/libs/shared",
+      "nx-mono/apps/backend",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

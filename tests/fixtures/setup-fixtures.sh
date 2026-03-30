@@ -466,4 +466,25 @@ echo '{"name": "docker"}' > "$BASE/combo/tools/docker/package.json"
 echo '{"name": "k8s"}' > "$BASE/combo/tools/k8s/package.json"
 git -C "$BASE/combo" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 22: Nx monorepo (project.json per package, nx.json at root)
+# CWD: nx-mono/apps/frontend
+# Expected: nx-mono/libs/shared, nx-mono/apps/backend
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/nx-mono/apps/frontend"
+mkdir -p "$BASE/nx-mono/apps/backend"
+mkdir -p "$BASE/nx-mono/libs/shared"
+
+# Nx with package.json workspaces (most common setup)
+echo '{"name": "nx-mono", "workspaces": ["apps/*", "libs/*"]}' > "$BASE/nx-mono/package.json"
+echo '{"name": "frontend"}' > "$BASE/nx-mono/apps/frontend/package.json"
+echo '{"targets": {}}' > "$BASE/nx-mono/apps/frontend/project.json"
+echo '{"name": "backend"}' > "$BASE/nx-mono/apps/backend/package.json"
+echo '{"targets": {}}' > "$BASE/nx-mono/apps/backend/project.json"
+echo '{"name": "shared"}' > "$BASE/nx-mono/libs/shared/package.json"
+echo '{"targets": {}}' > "$BASE/nx-mono/libs/shared/project.json"
+echo '# Shared conventions' > "$BASE/nx-mono/libs/shared/AGENTS.md"
+echo '{}' > "$BASE/nx-mono/nx.json"
+git -C "$BASE/nx-mono" init -q
+
 echo "Fixtures created at $BASE"
