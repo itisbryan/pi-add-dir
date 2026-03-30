@@ -208,11 +208,11 @@ function findWorkspaceRoot(cwd: string): string | null {
     // Maven multi-module (pom.xml with <modules>)
     const pomXml = readFileSafe(path.join(current, "pom.xml"));
     if (pomXml && pomXml.includes("<modules>")) return current;
-    // Python monorepo (pyproject.toml at root with multiple sub-projects)
-    if (fileExists(path.join(current, "pyproject.toml")) && current !== cwd) {
-      // Check if it's a parent that has sub-projects
-      return current;
-    }
+    // Python/uv workspace (pyproject.toml with [tool.uv.workspace] members)
+    const pyprojectWs = readFileSafe(path.join(current, "pyproject.toml"));
+    if (pyprojectWs && pyprojectWs.includes("[tool.uv.workspace]")) return current;
+    // Generic Python monorepo (pyproject.toml at a parent level)
+    if (pyprojectWs && current !== cwd) return current;
 
     const parent = path.dirname(current);
     if (parent === current) return null;
@@ -686,6 +686,47 @@ function collectWorkspaceMembers(cwd: string): Candidate[] {
             reasons: ["Maven module"],
             weight: 0.5,
           });
+        }
+      }
+    }
+  }
+
+  // --- uv/Python workspace (pyproject.toml with [tool.uv.workspace] members) ---
+  const pyprojectRoot = readFileSafe(path.join(wsRoot, "pyproject.toml"));
+  if (pyprojectRoot && pyprojectRoot.includes("[tool.uv.workspace]")) {
+    // Match members = ["packages/*", "apps/*"] in TOML
+    const membersMatch = pyprojectRoot.match(/\[tool\.uv\.workspace\][\s\S]*?members\s*=\s*\[([^\]]+)\]/);
+    if (membersMatch) {
+      const patterns = [...membersMatch[1].matchAll(/["']([^"']+)["']/g)].map(m => m[1]);
+      for (const pattern of patterns) {
+        if (pattern.endsWith("/*")) {
+          const baseDir = path.join(wsRoot, pattern.slice(0, -2));
+          if (dirExists(baseDir)) {
+            try {
+              const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+              for (const entry of entries) {
+                if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+                const fullPath = path.join(baseDir, entry.name);
+                if (fullPath === cwd) continue;
+                if (isProject(fullPath)) {
+                  candidates.push({
+                    dir: fullPath,
+                    reasons: ["uv workspace member"],
+                    weight: 0.5,
+                  });
+                }
+              }
+            } catch { /* skip */ }
+          }
+        } else {
+          const fullPath = resolvePath(wsRoot, pattern);
+          if (fullPath !== cwd && dirExists(fullPath) && isProject(fullPath)) {
+            candidates.push({
+              dir: fullPath,
+              reasons: ["uv workspace member"],
+              weight: 0.5,
+            });
+          }
         }
       }
     }

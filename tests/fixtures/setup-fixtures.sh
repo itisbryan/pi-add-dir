@@ -545,4 +545,35 @@ git -C "$BASE/yarn-berry/app" init -q
 git -C "$BASE/yarn-berry/shared" init -q
 git -C "$BASE/yarn-berry/utils" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 26: uv Python workspace
+# CWD: uv-workspace/packages/api
+# Expected: uv-workspace/packages/core, uv-workspace/libs/shared
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/uv-workspace/packages/api"
+mkdir -p "$BASE/uv-workspace/packages/core"
+mkdir -p "$BASE/uv-workspace/libs/shared"
+
+cat > "$BASE/uv-workspace/pyproject.toml" << 'EOF'
+[project]
+name = "uv-mono"
+
+[tool.uv.workspace]
+members = ["packages/*", "libs/*"]
+EOF
+cat > "$BASE/uv-workspace/packages/api/pyproject.toml" << 'EOF'
+[project]
+name = "api"
+EOF
+cat > "$BASE/uv-workspace/packages/core/pyproject.toml" << 'EOF'
+[project]
+name = "core"
+EOF
+echo '# Core library' > "$BASE/uv-workspace/packages/core/CLAUDE.md"
+cat > "$BASE/uv-workspace/libs/shared/pyproject.toml" << 'EOF'
+[project]
+name = "shared"
+EOF
+git -C "$BASE/uv-workspace" init -q
+
 echo "Fixtures created at $BASE"

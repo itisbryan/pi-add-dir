@@ -228,6 +228,14 @@ const SCENARIOS: Scenario[] = [
       "yarn-berry/utils",
     ],
   },
+  {
+    name: "uv-python-workspace",
+    cwd: "uv-workspace/packages/api",
+    expected: [
+      "uv-workspace/packages/core",
+      "uv-workspace/libs/shared",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
