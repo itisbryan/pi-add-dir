@@ -244,6 +244,14 @@ const SCENARIOS: Scenario[] = [
       "dotnet-sln/src/Infrastructure",
     ],
   },
+  {
+    name: "php-composer-paths",
+    cwd: "php-mono/app",
+    expected: [
+      "php-mono/packages/auth",
+      "php-mono/packages/mailer",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

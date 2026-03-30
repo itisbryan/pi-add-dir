@@ -600,4 +600,26 @@ echo '# Domain rules' > "$BASE/dotnet-sln/src/Core/AGENTS.md"
 touch "$BASE/dotnet-sln/src/Infrastructure/Infrastructure.csproj"
 git -C "$BASE/dotnet-sln" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 28: PHP Composer with path repositories
+# CWD: php-mono/app
+# Expected: php-mono/packages/auth, php-mono/packages/mailer
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/php-mono/app"
+mkdir -p "$BASE/php-mono/packages/auth"
+mkdir -p "$BASE/php-mono/packages/mailer"
+
+cat > "$BASE/php-mono/app/composer.json" << 'EOF'
+{
+  "name": "app/main",
+  "repositories": [
+    { "type": "path", "url": "../packages/*" }
+  ]
+}
+EOF
+echo '{"name": "app/auth"}' > "$BASE/php-mono/packages/auth/composer.json"
+echo '# Auth package' > "$BASE/php-mono/packages/auth/AGENTS.md"
+echo '{"name": "app/mailer"}' > "$BASE/php-mono/packages/mailer/composer.json"
+git -C "$BASE/php-mono/app" init -q
+
 echo "Fixtures created at $BASE"

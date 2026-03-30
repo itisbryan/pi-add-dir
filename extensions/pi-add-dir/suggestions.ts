@@ -64,6 +64,7 @@ const PROJECT_MARKERS = [
   "setup.cfg",        // Python (legacy)
   "deno.json",        // Deno
   "project.json",     // Nx
+  "composer.json",    // PHP
   "Package.swift",    // Swift PM
   "pubspec.yaml",     // Dart/Flutter
 ];
@@ -433,6 +434,57 @@ function collectPythonPaths(cwd: string): Candidate[] {
       });
     }
   }
+  return candidates;
+}
+
+/**
+ * Collect Composer path repository references.
+ */
+function collectComposerPaths(cwd: string): Candidate[] {
+  const composer = readFileSafe(path.join(cwd, "composer.json"));
+  if (!composer) return [];
+
+  const candidates: Candidate[] = [];
+  try {
+    const parsed = JSON.parse(composer);
+    const repos = parsed.repositories;
+    if (Array.isArray(repos)) {
+      for (const repo of repos) {
+        if (repo?.type === "path" && typeof repo.url === "string") {
+          // Composer path repos can use glob patterns like ../packages/*
+          const urlPath = repo.url;
+          if (urlPath.endsWith("/*")) {
+            const baseDir = resolvePath(cwd, urlPath.slice(0, -2));
+            if (dirExists(baseDir)) {
+              try {
+                const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+                for (const entry of entries) {
+                  if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+                  const fullPath = path.join(baseDir, entry.name);
+                  if (isProject(fullPath)) {
+                    candidates.push({
+                      dir: fullPath,
+                      reasons: ["Composer path repository"],
+                      weight: 0.6,
+                    });
+                  }
+                }
+              } catch { /* skip */ }
+            }
+          } else {
+            const resolved = resolvePath(cwd, urlPath);
+            if (dirExists(resolved)) {
+              candidates.push({
+                dir: resolved,
+                reasons: ["Composer path repository"],
+                weight: 0.6,
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch { /* skip */ }
   return candidates;
 }
 
@@ -882,6 +934,7 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
     ...collectSiblings(cwd),
     ...collectNpmFileDeps(cwd),
     ...collectTsProjectRefs(cwd),
+    ...collectComposerPaths(cwd),
     ...collectGemfilePaths(cwd),
     ...collectCargoPaths(cwd),
     ...collectPythonPaths(cwd),
