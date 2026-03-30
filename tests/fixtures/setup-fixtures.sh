@@ -1,0 +1,187 @@
+#!/bin/bash
+# Creates realistic project structures for testing directory suggestions.
+# Each scenario has a cwd and known-good expected suggestions.
+set -euo pipefail
+
+BASE="${1:-.}/test-projects"
+rm -rf "$BASE"
+
+# ---------------------------------------------------------------------------
+# Scenario 1: Monorepo with packages/ and apps/
+# CWD: monorepo/apps/web
+# Expected: monorepo/packages/ui, monorepo/packages/shared, monorepo/apps/api
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/monorepo/packages/ui/.pi/skills/design-tokens"
+mkdir -p "$BASE/monorepo/packages/shared"
+mkdir -p "$BASE/monorepo/apps/web"
+mkdir -p "$BASE/monorepo/apps/api"
+
+echo '{"name": "monorepo", "workspaces": ["packages/*", "apps/*"]}' > "$BASE/monorepo/package.json"
+echo '{"name": "@mono/web", "dependencies": {"@mono/ui": "workspace:*", "@mono/shared": "workspace:*"}}' > "$BASE/monorepo/apps/web/package.json"
+echo '{"name": "@mono/api"}' > "$BASE/monorepo/apps/api/package.json"
+echo '{"name": "@mono/ui"}' > "$BASE/monorepo/packages/ui/package.json"
+echo '{"name": "@mono/shared"}' > "$BASE/monorepo/packages/shared/package.json"
+echo "# UI guidelines" > "$BASE/monorepo/packages/ui/AGENTS.md"
+echo "---\nname: design-tokens\ndescription: Design token management\n---\n# Design Tokens" > "$BASE/monorepo/packages/ui/.pi/skills/design-tokens/SKILL.md"
+echo "# Shared library" > "$BASE/monorepo/packages/shared/CLAUDE.md"
+git -C "$BASE/monorepo" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 2: Sibling projects with shared library
+# CWD: projects/frontend
+# Expected: projects/shared-lib (has AGENTS.md), projects/backend
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/projects/frontend"
+mkdir -p "$BASE/projects/backend"
+mkdir -p "$BASE/projects/shared-lib"
+mkdir -p "$BASE/projects/random-notes"  # no project markers, should NOT be suggested
+
+echo '{"name": "frontend", "dependencies": {"shared-lib": "file:../shared-lib"}}' > "$BASE/projects/frontend/package.json"
+echo '{"name": "backend"}' > "$BASE/projects/backend/package.json"
+echo '{"name": "shared-lib"}' > "$BASE/projects/shared-lib/package.json"
+echo "# Shared rules" > "$BASE/projects/shared-lib/AGENTS.md"
+# random-notes has no package.json, no AGENTS.md — just random files
+echo "some notes" > "$BASE/projects/random-notes/notes.txt"
+git -C "$BASE/projects/frontend" init -q
+git -C "$BASE/projects/backend" init -q
+git -C "$BASE/projects/shared-lib" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 3: Git submodules
+# CWD: with-submodules (has .gitmodules referencing vendor/lib-a and vendor/lib-b)
+# Expected: vendor/lib-a, vendor/lib-b
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/with-submodules/vendor/lib-a"
+mkdir -p "$BASE/with-submodules/vendor/lib-b"
+mkdir -p "$BASE/with-submodules/src"
+
+echo '{"name": "main-project"}' > "$BASE/with-submodules/package.json"
+echo "# Lib A rules" > "$BASE/with-submodules/vendor/lib-a/AGENTS.md"
+echo '{"name": "lib-a"}' > "$BASE/with-submodules/vendor/lib-a/package.json"
+echo '{"name": "lib-b"}' > "$BASE/with-submodules/vendor/lib-b/package.json"
+cat > "$BASE/with-submodules/.gitmodules" << 'EOF'
+[submodule "vendor/lib-a"]
+	path = vendor/lib-a
+	url = https://github.com/example/lib-a.git
+[submodule "vendor/lib-b"]
+	path = vendor/lib-b
+	url = https://github.com/example/lib-b.git
+EOF
+git -C "$BASE/with-submodules" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 4: Ruby on Rails with local gem path deps
+# CWD: rails-app
+# Expected: rails-app/engines/auth, gems/shared-gem (sibling with Gemfile)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/rails-app/engines/auth"
+mkdir -p "$BASE/gems/shared-gem"
+
+echo "source 'https://rubygems.org'" > "$BASE/rails-app/Gemfile"
+echo "gem 'auth', path: 'engines/auth'" >> "$BASE/rails-app/Gemfile"
+echo "gem 'shared-gem', path: '../gems/shared-gem'" >> "$BASE/rails-app/Gemfile"
+echo "# Auth engine" > "$BASE/rails-app/engines/auth/AGENTS.md"
+touch "$BASE/rails-app/engines/auth/Gemfile"
+echo "# Shared gem rules" > "$BASE/gems/shared-gem/CLAUDE.md"
+touch "$BASE/gems/shared-gem/Gemfile"
+git -C "$BASE/rails-app" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 5: Rust workspace with Cargo.toml
+# CWD: rust-workspace/crates/app
+# Expected: rust-workspace/crates/core, rust-workspace/crates/utils
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/rust-workspace/crates/app/src"
+mkdir -p "$BASE/rust-workspace/crates/core/src"
+mkdir -p "$BASE/rust-workspace/crates/utils/src"
+
+cat > "$BASE/rust-workspace/Cargo.toml" << 'EOF'
+[workspace]
+members = ["crates/*"]
+EOF
+cat > "$BASE/rust-workspace/crates/app/Cargo.toml" << 'EOF'
+[package]
+name = "app"
+[dependencies]
+core = { path = "../core" }
+utils = { path = "../utils" }
+EOF
+cat > "$BASE/rust-workspace/crates/core/Cargo.toml" << 'EOF'
+[package]
+name = "core"
+EOF
+echo "# Core crate" > "$BASE/rust-workspace/crates/core/AGENTS.md"
+cat > "$BASE/rust-workspace/crates/utils/Cargo.toml" << 'EOF'
+[package]
+name = "utils"
+EOF
+git -C "$BASE/rust-workspace" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 6: Python monorepo with pyproject.toml
+# CWD: py-mono/services/api
+# Expected: py-mono/libs/core, py-mono/services/worker
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/py-mono/services/api"
+mkdir -p "$BASE/py-mono/services/worker"
+mkdir -p "$BASE/py-mono/libs/core"
+
+cat > "$BASE/py-mono/pyproject.toml" << 'EOF'
+[tool.hatch.envs.default]
+dependencies = []
+EOF
+cat > "$BASE/py-mono/services/api/pyproject.toml" << 'EOF'
+[project]
+name = "api"
+dependencies = ["core @ file:../../libs/core"]
+EOF
+cat > "$BASE/py-mono/services/worker/pyproject.toml" << 'EOF'
+[project]
+name = "worker"
+EOF
+cat > "$BASE/py-mono/libs/core/pyproject.toml" << 'EOF'
+[project]
+name = "core"
+EOF
+echo "# Core library" > "$BASE/py-mono/libs/core/CLAUDE.md"
+git -C "$BASE/py-mono" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 7: Project with .pi/extensions in sibling
+# CWD: ext-project/main-app
+# Expected: ext-project/tooling (has .pi/extensions)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/ext-project/main-app"
+mkdir -p "$BASE/ext-project/tooling/.pi/extensions/my-ext"
+
+echo '{"name": "main-app"}' > "$BASE/ext-project/main-app/package.json"
+echo '{"name": "tooling"}' > "$BASE/ext-project/tooling/package.json"
+echo "export default () => {}" > "$BASE/ext-project/tooling/.pi/extensions/my-ext/index.ts"
+echo "# Tooling conventions" > "$BASE/ext-project/tooling/AGENTS.md"
+git -C "$BASE/ext-project/main-app" init -q
+git -C "$BASE/ext-project/tooling" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 8: Go workspace with go.work
+# CWD: go-workspace/cmd/server
+# Expected: go-workspace/pkg/auth, go-workspace/internal/db
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/go-workspace/cmd/server"
+mkdir -p "$BASE/go-workspace/pkg/auth"
+mkdir -p "$BASE/go-workspace/internal/db"
+
+cat > "$BASE/go-workspace/go.work" << 'EOF'
+go 1.21
+use (
+    ./cmd/server
+    ./pkg/auth
+    ./internal/db
+)
+EOF
+echo "module server" > "$BASE/go-workspace/cmd/server/go.mod"
+echo "module auth" > "$BASE/go-workspace/pkg/auth/go.mod"
+echo "module db" > "$BASE/go-workspace/internal/db/go.mod"
+echo "# Auth package" > "$BASE/go-workspace/pkg/auth/AGENTS.md"
+git -C "$BASE/go-workspace" init -q
+
+echo "Fixtures created at $BASE"

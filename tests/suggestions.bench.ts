@@ -1,0 +1,183 @@
+/**
+ * Benchmark for the directory suggestion engine.
+ *
+ * Runs the suggestion algorithm against realistic test fixtures and measures:
+ * - suggestion_f1: F1 score (harmonic mean of precision and recall) — PRIMARY
+ * - precision: fraction of suggestions that are correct
+ * - recall: fraction of expected suggestions that were found
+ * - latency_ms: time to generate suggestions
+ *
+ * Outputs METRIC lines for autoresearch.
+ */
+
+import * as path from "node:path";
+import * as fs from "node:fs";
+import { execSync } from "node:child_process";
+import { suggestDirectories } from "../extensions/pi-add-dir/suggestions.js";
+
+// ---------------------------------------------------------------------------
+// Test scenarios — each defines a cwd and expected suggestions
+// ---------------------------------------------------------------------------
+
+interface Scenario {
+  name: string;
+  /** Relative path from fixtures base to use as cwd */
+  cwd: string;
+  /** Relative paths from fixtures base that should be suggested */
+  expected: string[];
+  /** Weight for this scenario (default 1) */
+  weight?: number;
+}
+
+const SCENARIOS: Scenario[] = [
+  {
+    name: "monorepo-apps-web",
+    cwd: "monorepo/apps/web",
+    expected: [
+      "monorepo/packages/ui",
+      "monorepo/packages/shared",
+      "monorepo/apps/api",
+    ],
+  },
+  {
+    name: "sibling-projects",
+    cwd: "projects/frontend",
+    expected: [
+      "projects/shared-lib",
+      "projects/backend",
+      // random-notes should NOT appear (no project markers)
+    ],
+  },
+  {
+    name: "git-submodules",
+    cwd: "with-submodules",
+    expected: [
+      "with-submodules/vendor/lib-a",
+      "with-submodules/vendor/lib-b",
+    ],
+  },
+  {
+    name: "rails-gemfile-paths",
+    cwd: "rails-app",
+    expected: [
+      "rails-app/engines/auth",
+      "gems/shared-gem",
+    ],
+  },
+  {
+    name: "rust-workspace",
+    cwd: "rust-workspace/crates/app",
+    expected: [
+      "rust-workspace/crates/core",
+      "rust-workspace/crates/utils",
+    ],
+  },
+  {
+    name: "python-monorepo",
+    cwd: "py-mono/services/api",
+    expected: [
+      "py-mono/libs/core",
+      "py-mono/services/worker",
+    ],
+  },
+  {
+    name: "sibling-with-extensions",
+    cwd: "ext-project/main-app",
+    expected: [
+      "ext-project/tooling",
+    ],
+  },
+  {
+    name: "go-workspace",
+    cwd: "go-workspace/cmd/server",
+    expected: [
+      "go-workspace/pkg/auth",
+      "go-workspace/internal/db",
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Run benchmark
+// ---------------------------------------------------------------------------
+
+const FIXTURE_BASE = path.join(import.meta.dirname, "fixtures", "test-projects");
+
+// Ensure fixtures exist
+if (!fs.existsSync(FIXTURE_BASE)) {
+  console.error("Setting up test fixtures...");
+  execSync(`bash ${path.join(import.meta.dirname, "fixtures", "setup-fixtures.sh")} ${path.join(import.meta.dirname, "fixtures")}`, {
+    stdio: "inherit",
+  });
+}
+
+let totalPrecision = 0;
+let totalRecall = 0;
+let totalF1 = 0;
+let totalWeight = 0;
+let totalLatencyMs = 0;
+let scenarioCount = 0;
+
+// Warm up (JIT)
+suggestDirectories({ cwd: path.join(FIXTURE_BASE, SCENARIOS[0].cwd) });
+
+for (const scenario of SCENARIOS) {
+  const cwd = path.join(FIXTURE_BASE, scenario.cwd);
+  const expectedAbsolute = scenario.expected.map(e => path.join(FIXTURE_BASE, e));
+  const weight = scenario.weight ?? 1;
+
+  // Time the suggestion call (median of 5 runs)
+  const times: number[] = [];
+  let suggestions: ReturnType<typeof suggestDirectories> = [];
+
+  for (let i = 0; i < 5; i++) {
+    const start = performance.now();
+    suggestions = suggestDirectories({ cwd });
+    times.push(performance.now() - start);
+  }
+  times.sort((a, b) => a - b);
+  const medianMs = times[Math.floor(times.length / 2)];
+
+  const suggestedPaths = new Set(suggestions.map(s => s.absolutePath));
+  const expectedSet = new Set(expectedAbsolute);
+
+  // Precision: of what we suggested, how many are in expected?
+  const truePositives = [...suggestedPaths].filter(p => expectedSet.has(p)).length;
+  const precision = suggestedPaths.size > 0 ? truePositives / suggestedPaths.size : 0;
+
+  // Recall: of what's expected, how many did we find?
+  const recall = expectedSet.size > 0 ? truePositives / expectedSet.size : 0;
+
+  // F1 score
+  const f1 = precision + recall > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
+
+  // Report per-scenario
+  const missed = expectedAbsolute.filter(e => !suggestedPaths.has(e)).map(e => path.basename(e));
+  const extra = [...suggestedPaths].filter(p => !expectedSet.has(p)).map(p => path.basename(p));
+
+  const status = f1 === 1 ? "✓" : f1 > 0 ? "△" : "✗";
+  console.log(
+    `${status} ${scenario.name}: F1=${f1.toFixed(2)} P=${precision.toFixed(2)} R=${recall.toFixed(2)} (${medianMs.toFixed(1)}ms)` +
+    (missed.length ? ` missed=[${missed.join(",")}]` : "") +
+    (extra.length ? ` extra=[${extra.join(",")}]` : "")
+  );
+
+  totalPrecision += precision * weight;
+  totalRecall += recall * weight;
+  totalF1 += f1 * weight;
+  totalWeight += weight;
+  totalLatencyMs += medianMs;
+  scenarioCount++;
+}
+
+// Aggregate
+const avgF1 = totalF1 / totalWeight;
+const avgPrecision = totalPrecision / totalWeight;
+const avgRecall = totalRecall / totalWeight;
+const avgLatencyMs = totalLatencyMs / scenarioCount;
+
+console.log(`\n--- Aggregate ---`);
+console.log(`METRIC suggestion_f1=${avgF1.toFixed(4)}`);
+console.log(`METRIC precision=${avgPrecision.toFixed(4)}`);
+console.log(`METRIC recall=${avgRecall.toFixed(4)}`);
+console.log(`METRIC latency_ms=${avgLatencyMs.toFixed(2)}`);
