@@ -184,4 +184,73 @@ echo "module db" > "$BASE/go-workspace/internal/db/go.mod"
 echo "# Auth package" > "$BASE/go-workspace/pkg/auth/AGENTS.md"
 git -C "$BASE/go-workspace" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 9: Nested monorepo — app inside a monorepo inside a parent with siblings
+# CWD: nested/monorepo/apps/dashboard
+# Expected: nested/monorepo/packages/core, nested/monorepo/apps/admin
+# NOT expected: nested/unrelated-project (different repo, >3 threshold applies)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/nested/monorepo/apps/dashboard"
+mkdir -p "$BASE/nested/monorepo/apps/admin"
+mkdir -p "$BASE/nested/monorepo/packages/core"
+mkdir -p "$BASE/nested/unrelated-project"
+mkdir -p "$BASE/nested/another-project"
+mkdir -p "$BASE/nested/third-project"
+mkdir -p "$BASE/nested/fourth-project"
+
+echo '{"name": "nested-mono", "workspaces": ["packages/*", "apps/*"]}' > "$BASE/nested/monorepo/package.json"
+echo '{"name": "dashboard"}' > "$BASE/nested/monorepo/apps/dashboard/package.json"
+echo '{"name": "admin"}' > "$BASE/nested/monorepo/apps/admin/package.json"
+echo '{"name": "core"}' > "$BASE/nested/monorepo/packages/core/package.json"
+echo '# Core lib' > "$BASE/nested/monorepo/packages/core/AGENTS.md"
+echo '{"name": "unrelated"}' > "$BASE/nested/unrelated-project/package.json"
+echo '{"name": "another"}' > "$BASE/nested/another-project/package.json"
+echo '{"name": "third"}' > "$BASE/nested/third-project/package.json"
+echo '{"name": "fourth"}' > "$BASE/nested/fourth-project/package.json"
+git -C "$BASE/nested/monorepo" init -q
+git -C "$BASE/nested/unrelated-project" init -q
+git -C "$BASE/nested/another-project" init -q
+git -C "$BASE/nested/third-project" init -q
+git -C "$BASE/nested/fourth-project" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 10: Mixed signals — dep path + sibling + context files
+# CWD: mixed/app
+# Expected: mixed/core (dep + AGENTS.md), mixed/helpers (dep only)
+# NOT expected: mixed/archive (no dep, no context, >3 siblings)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/mixed/app"
+mkdir -p "$BASE/mixed/core"
+mkdir -p "$BASE/mixed/helpers"
+mkdir -p "$BASE/mixed/archive"
+mkdir -p "$BASE/mixed/legacy"
+mkdir -p "$BASE/mixed/experiment"
+mkdir -p "$BASE/mixed/sandbox"
+
+echo '{"name": "app", "dependencies": {"core": "file:../core", "helpers": "file:../helpers"}}' > "$BASE/mixed/app/package.json"
+echo '{"name": "core"}' > "$BASE/mixed/core/package.json"
+echo '# Core rules' > "$BASE/mixed/core/AGENTS.md"
+echo '{"name": "helpers"}' > "$BASE/mixed/helpers/package.json"
+echo '{"name": "archive"}' > "$BASE/mixed/archive/package.json"
+echo '{"name": "legacy"}' > "$BASE/mixed/legacy/package.json"
+echo '{"name": "experiment"}' > "$BASE/mixed/experiment/package.json"
+echo '{"name": "sandbox"}' > "$BASE/mixed/sandbox/package.json"
+git -C "$BASE/mixed/app" init -q
+git -C "$BASE/mixed/core" init -q
+git -C "$BASE/mixed/helpers" init -q
+git -C "$BASE/mixed/archive" init -q
+git -C "$BASE/mixed/legacy" init -q
+git -C "$BASE/mixed/experiment" init -q
+git -C "$BASE/mixed/sandbox" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 11: Empty parent — cwd is a lone project
+# CWD: lone-project
+# Expected: nothing (no siblings, no deps, no workspace)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/lone-project/src"
+
+echo '{"name": "lone"}' > "$BASE/lone-project/package.json"
+git -C "$BASE/lone-project" init -q
+
 echo "Fixtures created at $BASE"

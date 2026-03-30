@@ -95,6 +95,27 @@ const SCENARIOS: Scenario[] = [
       "go-workspace/internal/db",
     ],
   },
+  {
+    name: "nested-monorepo",
+    cwd: "nested/monorepo/apps/dashboard",
+    expected: [
+      "nested/monorepo/packages/core",
+      "nested/monorepo/apps/admin",
+    ],
+  },
+  {
+    name: "mixed-signals",
+    cwd: "mixed/app",
+    expected: [
+      "mixed/core",
+      "mixed/helpers",
+    ],
+  },
+  {
+    name: "lone-project",
+    cwd: "lone-project",
+    expected: [],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -140,6 +161,20 @@ for (const scenario of SCENARIOS) {
 
   const suggestedPaths = new Set(suggestions.map(s => s.absolutePath));
   const expectedSet = new Set(expectedAbsolute);
+
+  // Edge case: both empty = perfect prediction
+  if (suggestedPaths.size === 0 && expectedSet.size === 0) {
+    const f1 = 1, precision = 1, recall = 1;
+    const status = "✓";
+    console.log(`${status} ${scenario.name}: F1=${f1.toFixed(2)} P=${precision.toFixed(2)} R=${recall.toFixed(2)} (${medianMs.toFixed(1)}ms) [empty=correct]`);
+    totalPrecision += precision * weight;
+    totalRecall += recall * weight;
+    totalF1 += f1 * weight;
+    totalWeight += weight;
+    totalLatencyMs += medianMs;
+    scenarioCount++;
+    continue;
+  }
 
   // Precision: of what we suggested, how many are in expected?
   const truePositives = [...suggestedPaths].filter(p => expectedSet.has(p)).length;
