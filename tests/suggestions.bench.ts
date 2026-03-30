@@ -275,6 +275,13 @@ const SCENARIOS: Scenario[] = [
       "flutter-mono/packages/ui",
     ],
   },
+  {
+    name: "nested-workspaces",
+    cwd: "nested-ws/packages/sub-mono/apps/dashboard",
+    expected: [
+      "nested-ws/packages/sub-mono/libs/common",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

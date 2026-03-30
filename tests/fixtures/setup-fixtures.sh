@@ -688,4 +688,23 @@ name: ui
 EOF
 git -C "$BASE/flutter-mono" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 32: Nested workspaces — child workspace inside parent workspace
+# CWD: nested-ws/packages/sub-mono/apps/dashboard
+# The inner workspace (sub-mono) should be found, NOT the outer one
+# Expected: nested-ws/packages/sub-mono/libs/common (inner workspace member)
+# NOT expected: nested-ws/packages/other-pkg (outer workspace member)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/nested-ws/packages/sub-mono/apps/dashboard"
+mkdir -p "$BASE/nested-ws/packages/sub-mono/libs/common"
+mkdir -p "$BASE/nested-ws/packages/other-pkg"
+
+echo '{"name": "outer-mono", "workspaces": ["packages/*"]}' > "$BASE/nested-ws/package.json"
+echo '{"name": "sub-mono", "workspaces": ["apps/*", "libs/*"]}' > "$BASE/nested-ws/packages/sub-mono/package.json"
+echo '{"name": "dashboard"}' > "$BASE/nested-ws/packages/sub-mono/apps/dashboard/package.json"
+echo '{"name": "common"}' > "$BASE/nested-ws/packages/sub-mono/libs/common/package.json"
+echo '# Common lib' > "$BASE/nested-ws/packages/sub-mono/libs/common/AGENTS.md"
+echo '{"name": "other-pkg"}' > "$BASE/nested-ws/packages/other-pkg/package.json"
+git -C "$BASE/nested-ws" init -q
+
 echo "Fixtures created at $BASE"
