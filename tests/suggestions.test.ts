@@ -246,4 +246,31 @@ describe("suggestDirectories", () => {
     expect(paths).toContain(cwd("root-as-cwd/packages/core"));
     expect(paths).toContain(cwd("root-as-cwd/packages/cli"));
   });
+
+  it("returns highest-scored suggestions first when maxResults is limited", () => {
+    // monorepo has 3 members: ui (AGENTS.md + skills), shared (CLAUDE.md), api (no context)
+    const result = suggestDirectories({ cwd: cwd("monorepo/apps/web"), maxResults: 2 });
+    expect(result.length).toBe(2);
+    // Highest-scored (with context files) should come first
+    expect(result[0].score).toBeGreaterThanOrEqual(result[1].score);
+  });
+
+  it("handles no-git projects via context file boost", () => {
+    const result = suggestDirectories({ cwd: cwd("no-git/frontend") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("no-git/backend"));
+  });
+
+  it("gracefully handles malformed JSON in package.json", () => {
+    // Should not throw, should fall back to sibling heuristic
+    const result = suggestDirectories({ cwd: cwd("malformed/app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("malformed/lib"));
+  });
+
+  it("deduplicates overlapping workspace configs", () => {
+    const result = suggestDirectories({ cwd: cwd("overlap-ws/packages/app") });
+    const libPaths = result.filter(s => s.absolutePath === cwd("overlap-ws/packages/lib"));
+    expect(libPaths.length).toBe(1); // deduplicated despite npm + pnpm both finding it
+  });
 });
