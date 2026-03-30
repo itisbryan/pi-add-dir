@@ -336,6 +336,13 @@ const SCENARIOS: Scenario[] = [
       "ws-plus-sub/vendor/external",
     ],
   },
+  {
+    name: "empty-workspaces-with-file-dep",
+    cwd: "empty-ws/app",
+    expected: [
+      "empty-ws/lib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

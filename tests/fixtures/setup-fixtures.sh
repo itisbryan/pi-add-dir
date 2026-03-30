@@ -846,4 +846,19 @@ cat > "$BASE/ws-plus-sub/.gitmodules" << 'EOF'
 EOF
 git -C "$BASE/ws-plus-sub" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 40: Empty workspaces array + file: deps
+# CWD: empty-ws/app (has workspaces:[] which is truthy but empty)
+# Expected: empty-ws/lib (file: dep should still work)
+# The empty workspaces should not prevent other heuristics from running
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/empty-ws/app"
+mkdir -p "$BASE/empty-ws/lib"
+
+echo '{"name": "app", "workspaces": [], "dependencies": {"lib": "file:../lib"}}' > "$BASE/empty-ws/app/package.json"
+echo '{"name": "lib"}' > "$BASE/empty-ws/lib/package.json"
+echo '# Lib rules' > "$BASE/empty-ws/lib/AGENTS.md"
+git -C "$BASE/empty-ws/app" init -q
+git -C "$BASE/empty-ws/lib" init -q
+
 echo "Fixtures created at $BASE"
