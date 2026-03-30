@@ -1,6 +1,6 @@
 {
   "name": "pi-add-dir",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Add external directories to your pi session — loads their AGENTS.md, CLAUDE.md, and skills into context.",
   "keywords": [
     "pi-package",
@@ -31,7 +31,8 @@
   },
   "files": [
     "extensions",
-    "README.md"
+    "README.md",
+    ".npmrc"
   ],
   "pi": {
     "extensions": [

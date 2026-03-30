@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- **fix:** Ship `.npmrc` with `omit=dev` — prevents 259 devDependency packages from being installed alongside the extension. Zero runtime dependencies.
+
 ## 1.2.0
 
 ### Smart Directory Suggestions
