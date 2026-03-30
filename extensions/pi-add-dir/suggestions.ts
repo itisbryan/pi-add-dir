@@ -53,8 +53,11 @@ const PROJECT_MARKERS = [
   "pyproject.toml",
   "Gemfile",
   "build.gradle",
+  "build.gradle.kts",
   "pom.xml",
   "mix.exs",
+  "deno.json",
+  "project.json",    // Nx
   "Makefile",
   "CMakeLists.txt",
   "setup.py",
