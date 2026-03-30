@@ -861,4 +861,55 @@ echo '# Lib rules' > "$BASE/empty-ws/lib/AGENTS.md"
 git -C "$BASE/empty-ws/app" init -q
 git -C "$BASE/empty-ws/lib" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 41: Ruby gem with path: not as first option
+# CWD: ruby-opts/app
+# Expected: ruby-opts/logger-gem
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/ruby-opts/app"
+mkdir -p "$BASE/ruby-opts/logger-gem"
+
+cat > "$BASE/ruby-opts/app/Gemfile" << 'EOF'
+source 'https://rubygems.org'
+gem 'logger', require: false, path: '../logger-gem'
+gem 'rails'
+EOF
+echo '# Logger gem' > "$BASE/ruby-opts/logger-gem/AGENTS.md"
+touch "$BASE/ruby-opts/logger-gem/Gemfile"
+git -C "$BASE/ruby-opts/app" init -q
+git -C "$BASE/ruby-opts/logger-gem" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 42: Gemfile with gemspec path: directive
+# CWD: ruby-gemspec/main-app
+# Expected: ruby-gemspec/my-gem
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/ruby-gemspec/main-app"
+mkdir -p "$BASE/ruby-gemspec/my-gem"
+
+cat > "$BASE/ruby-gemspec/main-app/Gemfile" << 'EOF'
+source 'https://rubygems.org'
+gemspec path: '../my-gem'
+gem 'rake'
+EOF
+touch "$BASE/ruby-gemspec/my-gem/my-gem.gemspec"
+echo '# My gem conventions' > "$BASE/ruby-gemspec/my-gem/CLAUDE.md"
+touch "$BASE/ruby-gemspec/my-gem/Gemfile"
+git -C "$BASE/ruby-gemspec/main-app" init -q
+git -C "$BASE/ruby-gemspec/my-gem" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 43: Ruby project detected by Rakefile only (no Gemfile)
+# CWD: rakefile-only/web
+# Expected: rakefile-only/tools (has Rakefile + AGENTS.md, <=3 siblings)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/rakefile-only/web"
+mkdir -p "$BASE/rakefile-only/tools"
+
+touch "$BASE/rakefile-only/web/Rakefile"
+touch "$BASE/rakefile-only/tools/Rakefile"
+echo '# Build tools' > "$BASE/rakefile-only/tools/AGENTS.md"
+git -C "$BASE/rakefile-only/web" init -q
+git -C "$BASE/rakefile-only/tools" init -q
+
 echo "Fixtures created at $BASE"

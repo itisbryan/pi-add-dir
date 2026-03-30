@@ -54,6 +54,7 @@ const PROJECT_MARKERS = [
   "go.mod",           // Go
   "pyproject.toml",   // Python (modern)
   "Gemfile",          // Ruby
+  "Rakefile",          // Ruby
   "pom.xml",          // Maven/JVM
   "build.gradle",     // Gradle
   "build.gradle.kts", // Gradle (Kotlin DSL)
@@ -397,10 +398,33 @@ function collectNpmFileDeps(cwd: string): Candidate[] {
   return candidates;
 }
 
-/** Collect path: gems from Gemfile. */
+/** Collect path: gems from Gemfile + gemspec directives. */
 function collectGemfilePaths(cwd: string): Candidate[] {
-  // Path is in capture group 2 (group 1 is the gem name)
-  return collectPathsFromFile(cwd, "Gemfile", /gem\s+['"]([^'"]+)['"]\s*,\s*path:\s*['"]([^'"]+)['"]/g, "Gemfile path dependency", 0.6, 2);
+  const content = readFileSafe(path.join(cwd, "Gemfile"));
+  if (!content) return [];
+
+  const candidates: Candidate[] = [];
+
+  // Match: gem 'name', ..., path: 'dir' (path: can appear anywhere in options)
+  const gemRegex = /gem\s+['"]([^'"]+)['"][^\n]*path:\s*['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = gemRegex.exec(content)) !== null) {
+    const resolved = resolvePath(cwd, match[2]);
+    if (dirExists(resolved)) {
+      candidates.push({ dir: resolved, reasons: [`Gemfile path dependency (${match[1]})`], weight: 0.6 });
+    }
+  }
+
+  // Match: gemspec path: 'dir' (references a .gemspec in another directory)
+  const gemspecRegex = /^\s*gemspec(?:\s[^\n]*)?\bpath:\s*['"]([^'"]+)['"]/gm;
+  while ((match = gemspecRegex.exec(content)) !== null) {
+    const resolved = resolvePath(cwd, match[1]);
+    if (dirExists(resolved)) {
+      candidates.push({ dir: resolved, reasons: ["Gemfile gemspec path"], weight: 0.6 });
+    }
+  }
+
+  return candidates;
 }
 
 /** Collect Cargo.toml path dependencies. */

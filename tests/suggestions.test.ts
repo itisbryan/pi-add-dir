@@ -268,6 +268,24 @@ describe("suggestDirectories", () => {
     expect(paths).toContain(cwd("malformed/lib"));
   });
 
+  it("finds Gemfile path deps when path: is not first option", () => {
+    const result = suggestDirectories({ cwd: cwd("ruby-opts/app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("ruby-opts/logger-gem"));
+  });
+
+  it("finds gemspec path: directive in Gemfile", () => {
+    const result = suggestDirectories({ cwd: cwd("ruby-gemspec/main-app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("ruby-gemspec/my-gem"));
+  });
+
+  it("detects Rakefile-only projects as siblings", () => {
+    const result = suggestDirectories({ cwd: cwd("rakefile-only/web") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("rakefile-only/tools"));
+  });
+
   it("deduplicates overlapping workspace configs", () => {
     const result = suggestDirectories({ cwd: cwd("overlap-ws/packages/app") });
     const libPaths = result.filter(s => s.absolutePath === cwd("overlap-ws/packages/lib"));

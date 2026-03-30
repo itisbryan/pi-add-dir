@@ -343,6 +343,27 @@ const SCENARIOS: Scenario[] = [
       "empty-ws/lib",
     ],
   },
+  {
+    name: "ruby-path-not-first",
+    cwd: "ruby-opts/app",
+    expected: [
+      "ruby-opts/logger-gem",
+    ],
+  },
+  {
+    name: "ruby-gemspec-directive",
+    cwd: "ruby-gemspec/main-app",
+    expected: [
+      "ruby-gemspec/my-gem",
+    ],
+  },
+  {
+    name: "rakefile-only-project",
+    cwd: "rakefile-only/web",
+    expected: [
+      "rakefile-only/tools",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
