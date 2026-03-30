@@ -328,6 +328,14 @@ const SCENARIOS: Scenario[] = [
       "no-git/backend",
     ],
   },
+  {
+    name: "workspace-plus-submodules",
+    cwd: "ws-plus-sub/packages/app",
+    expected: [
+      "ws-plus-sub/packages/lib",
+      "ws-plus-sub/vendor/external",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

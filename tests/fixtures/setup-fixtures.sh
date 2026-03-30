@@ -825,4 +825,25 @@ echo '{"name": "backend"}' > "$BASE/no-git/backend/package.json"
 echo '# Backend rules' > "$BASE/no-git/backend/AGENTS.md"
 # No git init anywhere
 
+# ---------------------------------------------------------------------------
+# Scenario 39: Workspace + submodules together
+# CWD: ws-plus-sub/packages/app
+# Expected: ws-plus-sub/packages/lib (workspace), ws-plus-sub/vendor/external (submodule)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/ws-plus-sub/packages/app"
+mkdir -p "$BASE/ws-plus-sub/packages/lib"
+mkdir -p "$BASE/ws-plus-sub/vendor/external"
+
+echo '{"name": "ws-plus-sub", "workspaces": ["packages/*"]}' > "$BASE/ws-plus-sub/package.json"
+echo '{"name": "app"}' > "$BASE/ws-plus-sub/packages/app/package.json"
+echo '{"name": "lib"}' > "$BASE/ws-plus-sub/packages/lib/package.json"
+echo '{"name": "external"}' > "$BASE/ws-plus-sub/vendor/external/package.json"
+echo '# External rules' > "$BASE/ws-plus-sub/vendor/external/AGENTS.md"
+cat > "$BASE/ws-plus-sub/.gitmodules" << 'EOF'
+[submodule "vendor/external"]
+	path = vendor/external
+	url = https://github.com/example/external.git
+EOF
+git -C "$BASE/ws-plus-sub" init -q
+
 echo "Fixtures created at $BASE"
