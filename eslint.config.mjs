@@ -22,6 +22,12 @@ export default [
     },
   },
   {
+    files: ["tests/**/*.bench.ts", "tests/**/*.bench.js"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
     ignores: ["node_modules/", "dist/", ".worktrees/"],
   },
 ];
