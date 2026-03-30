@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.0
+
+### Smart Directory Suggestions
+
+- **feat:** `/add-dir` without arguments now shows an interactive picker with smart suggestions
+- **feat:** New `/suggest-dirs` command to list all suggestions with relevance scores
+- **feat:** Suggestion engine with 18 heuristic sources across 16 ecosystems:
+  - **Workspaces:** npm, pnpm (`pnpm-workspace.yaml`), Cargo, Go (`go.work`), uv Python (`[tool.uv.workspace]`)
+  - **Local deps:** npm `file:`/`link:`/`portal:`, Gemfile `path:`, Cargo `path =`, Python `file:`, Composer `path`, pubspec.yaml `path:`, Swift PM `.package(path:)`, Elixir `{:dep, path:}`
+  - **Build tools:** Gradle `include()`, Maven `<modules>`, TypeScript project references, Docker Compose `build.context`
+  - **SCM:** Git submodules (`.gitmodules`)
+  - **Project detection:** Sibling projects with smart filtering (git root sharing, context file boost, >3 threshold)
+- **feat:** Context file boost — directories with `AGENTS.md`/`CLAUDE.md`/skills get higher scores
+- **feat:** Ancestor exclusion — won't suggest a directory you're already inside
+- **perf:** Pre-scan optimization — single `readdirSync` per directory level instead of per-file stat calls
+- **perf:** Git root caching — avoids redundant upward walks for sibling checks
+- **test:** 59 unit tests + 39 benchmark scenarios, F1=1.0 precision/recall
+
 ## 1.1.0
 
 ### Hardening & Polish

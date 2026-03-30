@@ -39,7 +39,8 @@ Then `/reload` in pi.
 | Command | Description |
 |---------|-------------|
 | `/add-dir <path>` | Add an external directory to this session |
-| `/add-dir` | Interactive mode — prompts for a path |
+| `/add-dir` | Interactive mode — shows smart suggestions based on project structure |
+| `/suggest-dirs` | Show all directory suggestions with relevance scores |
 | `/remove-dir [path]` | Remove a directory (interactive picker if no path, tab-completion supported) |
 | `/dirs` | List all added directories with their detected context |
 
@@ -69,6 +70,28 @@ The agent can request adding a directory on its own:
 And search across external dirs when `@` file picker isn't available:
 
 > "Let me search for config files across the external directories."
+
+### Smart Suggestions
+
+When you run `/add-dir` without arguments, the extension analyzes your project structure and suggests relevant directories:
+
+- **Workspace members** — npm, pnpm, Cargo, Go, Python (uv), and monorepo packages
+- **Local dependencies** — `file:`/`link:`/`portal:` in package.json, `path:` in Gemfile/Cargo.toml
+- **Git submodules** — paths from `.gitmodules`
+- **Sibling projects** — related projects alongside your cwd
+- **TypeScript project references** — `references` in `tsconfig.json`
+- **Docker Compose services** — `build.context` paths
+- **Gradle project modules** — `include()` in `settings.gradle(.kts)`
+- **Maven multi-module** — `<modules>` in `pom.xml`
+- **uv Python workspaces** — `[tool.uv.workspace]` members in `pyproject.toml`
+- **.NET solutions** — project references in `.sln` files
+- **PHP Composer** — `path` repository references in `composer.json`
+- **Flutter/Dart** — `path:` dependencies in `pubspec.yaml`
+- **Swift PM** — `.package(path:)` local dependencies in `Package.swift`
+- **Elixir** — `{:dep, path: "..."}` in `mix.exs`
+- **Context-rich directories** — prioritizes dirs with `AGENTS.md`, `CLAUDE.md`, or skills
+
+Directories with context files get higher relevance scores, making the most useful suggestions appear first.
 
 ### Widget
 
