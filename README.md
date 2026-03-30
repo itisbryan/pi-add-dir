@@ -17,13 +17,7 @@ Skills from external directories are registered natively as `/skill:name` comman
 ## Install
 
 ```bash
-pi install /Users/itisbryan/Desktop/personal/pi-add-dir
-```
-
-Or from a git repo (once published):
-
-```bash
-pi install https://github.com/youruser/pi-add-dir
+pi install https://github.com/itisbryan/pi-add-dir
 ```
 
 Then `/reload` in pi.
@@ -36,7 +30,7 @@ Then `/reload` in pi.
 |---------|-------------|
 | `/add-dir <path>` | Add an external directory to this session |
 | `/add-dir` | Interactive mode — prompts for a path |
-| `/remove-dir [path]` | Remove a directory (interactive picker if no path) |
+| `/remove-dir [path]` | Remove a directory (interactive picker if no path, tab-completion supported) |
 | `/dirs` | List all added directories with their detected context |
 
 ### Examples
@@ -73,6 +67,8 @@ When directories are added, a widget appears above the editor:
 ```
 📂 2 external dirs │ other-project, shared-library  (/dirs to manage)
 ```
+
+The widget automatically truncates to fit your terminal width.
 
 ## How It Works
 
@@ -116,7 +112,7 @@ For each added directory, the extension reads:
 | `CLAUDE.md` | `<dir>/CLAUDE.md`, `<dir>/.pi/CLAUDE.md` |
 | Skills | `<dir>/.pi/skills/*/SKILL.md`, `<dir>/.agents/skills/*/SKILL.md`, `<dir>/.claude/skills/*/SKILL.md` |
 
-Context files are appended to the system prompt on every turn.
+Context files are appended to the system prompt on every turn (cached — filesystem is only re-scanned when directories change).
 
 Skills are registered natively with pi via the `resources_discover` event, so they appear as `/skill:name` commands with full autocomplete support.
 
@@ -124,14 +120,14 @@ Skills are registered natively with pi via the `resources_discover` event, so th
 
 Added directories are stored in the session via `pi.appendEntry()`. When you `/resume` a session, the directories are automatically restored.
 
-A temp file (`/tmp/pi-add-dir-<hash>.json`) is also maintained so `resources_discover` can read the directory list before the session is fully loaded. This file is automatically synced with session state.
+A temp file (`/tmp/pi-add-dir-<hash>.json`) is maintained so `resources_discover` can read the directory list before the session is fully loaded. This file is automatically cleaned up on session shutdown.
 
 ### Extension detection
 
 When adding a directory that contains `.pi/extensions/`, the extension detects them and shows actionable instructions:
 
 ```
-⚡ Found 2 extension(s) in other-project/.pi/extensions/.
+Found 2 extension(s) in other-project/.pi/extensions/.
    To enable them, add to your settings.json:
    { "extensions": ["/path/to/other-project/.pi/extensions"] }
    Then /reload to activate.
