@@ -812,4 +812,17 @@ echo '{"name": "lib"}' > "$BASE/overlap-ws/packages/lib/package.json"
 echo '# Lib' > "$BASE/overlap-ws/packages/lib/AGENTS.md"
 git -C "$BASE/overlap-ws" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 38: No .git anywhere — sibling detection without git root
+# CWD: no-git/frontend (no .git, just package.json)
+# Expected: no-git/backend (sibling, <=3 threshold with context files)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/no-git/frontend"
+mkdir -p "$BASE/no-git/backend"
+
+echo '{"name": "frontend"}' > "$BASE/no-git/frontend/package.json"
+echo '{"name": "backend"}' > "$BASE/no-git/backend/package.json"
+echo '# Backend rules' > "$BASE/no-git/backend/AGENTS.md"
+# No git init anywhere
+
 echo "Fixtures created at $BASE"

@@ -321,6 +321,13 @@ const SCENARIOS: Scenario[] = [
       "overlap-ws/packages/lib",
     ],
   },
+  {
+    name: "no-git-sibling",
+    cwd: "no-git/frontend",
+    expected: [
+      "no-git/backend",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
