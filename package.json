@@ -2,10 +2,32 @@
   "name": "pi-add-dir",
   "version": "1.0.0",
   "description": "Add external directories to your pi session — loads their AGENTS.md, CLAUDE.md, and skills into context.",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "external-directory",
+    "multi-project",
+    "context"
+  ],
+  "author": "itisbryan",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itisbryan/pi-add-dir.git"
+  },
+  "homepage": "https://github.com/itisbryan/pi-add-dir#readme",
+  "bugs": {
+    "url": "https://github.com/itisbryan/pi-add-dir/issues"
+  },
+  "files": [
+    "extensions",
+    "README.md"
+  ],
   "pi": {
-    "extensions": ["./extensions"]
+    "extensions": [
+      "./extensions"
+    ]
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
