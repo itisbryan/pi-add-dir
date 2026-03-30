@@ -227,6 +227,19 @@ describe("suggestDirectories", () => {
     expect(paths).toContain(cwd("swift-project/NetworkLib"));
   });
 
+  it("handles directory names with spaces", () => {
+    const result = suggestDirectories({ cwd: cwd("special chars/My App") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("special chars/My Lib"));
+    expect(paths).toContain(cwd("special chars/Core Module"));
+  });
+
+  it("finds Elixir mix.exs path deps", () => {
+    const result = suggestDirectories({ cwd: cwd("elixir-deps/apps/web") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("elixir-deps/libs/shared"));
+  });
+
   it("finds workspace members when cwd is workspace root", () => {
     const result = suggestDirectories({ cwd: cwd("root-as-cwd") });
     const paths = result.map(s => s.absolutePath);
