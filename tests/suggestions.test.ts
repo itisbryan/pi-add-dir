@@ -150,8 +150,80 @@ describe("suggestDirectories", () => {
   it("excludes ancestor dirs when deeply nested", () => {
     const result = suggestDirectories({ cwd: cwd("deep/monorepo/packages/ui/src/components") });
     const paths = result.map(s => s.absolutePath);
-    // Should find shared (workspace sibling) but NOT ui (ancestor of cwd)
     expect(paths).toContain(cwd("deep/monorepo/packages/shared"));
     expect(paths).not.toContain(cwd("deep/monorepo/packages/ui"));
+  });
+
+  it("finds .NET solution project references", () => {
+    const result = suggestDirectories({ cwd: cwd("dotnet-sln/src/WebApi") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("dotnet-sln/src/Core"));
+    expect(paths).toContain(cwd("dotnet-sln/src/Infrastructure"));
+  });
+
+  it("finds PHP Composer path repositories", () => {
+    const result = suggestDirectories({ cwd: cwd("php-mono/app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("php-mono/packages/auth"));
+    expect(paths).toContain(cwd("php-mono/packages/mailer"));
+  });
+
+  it("finds uv Python workspace members", () => {
+    const result = suggestDirectories({ cwd: cwd("uv-workspace/packages/api") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("uv-workspace/packages/core"));
+    expect(paths).toContain(cwd("uv-workspace/libs/shared"));
+  });
+
+  it("finds Yarn Berry link: and portal: deps", () => {
+    const result = suggestDirectories({ cwd: cwd("yarn-berry/app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("yarn-berry/shared"));
+    expect(paths).toContain(cwd("yarn-berry/utils"));
+  });
+
+  it("finds Flutter pubspec.yaml path deps", () => {
+    const result = suggestDirectories({ cwd: cwd("flutter-mono/apps/mobile") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("flutter-mono/packages/core"));
+    expect(paths).toContain(cwd("flutter-mono/packages/ui"));
+  });
+
+  it("resolves symlinked dependencies to real paths", () => {
+    const result = suggestDirectories({ cwd: cwd("symlink-test/app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("symlink-test/real-lib"));
+  });
+
+  it("handles nested workspaces (inner takes priority)", () => {
+    const result = suggestDirectories({ cwd: cwd("nested-ws/packages/sub-mono/apps/dashboard") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("nested-ws/packages/sub-mono/libs/common"));
+    // Outer workspace member should NOT appear
+    expect(paths).not.toContain(cwd("nested-ws/packages/other-pkg"));
+  });
+
+  it("precision: filters generic siblings when many exist", () => {
+    const result = suggestDirectories({ cwd: cwd("precision-test/my-app") });
+    const paths = result.map(s => s.absolutePath);
+    // Only the file: dep should surface
+    expect(paths).toContain(cwd("precision-test/my-lib"));
+    // Generic siblings should be filtered by >3 threshold
+    expect(paths).not.toContain(cwd("precision-test/other-1"));
+    expect(paths).not.toContain(cwd("precision-test/other-8"));
+  });
+
+  it("finds Maven multi-module projects", () => {
+    const result = suggestDirectories({ cwd: cwd("maven-project/web") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("maven-project/core"));
+    expect(paths).toContain(cwd("maven-project/api"));
+  });
+
+  it("finds workspace members when cwd is workspace root", () => {
+    const result = suggestDirectories({ cwd: cwd("root-as-cwd") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("root-as-cwd/packages/core"));
+    expect(paths).toContain(cwd("root-as-cwd/packages/cli"));
   });
 });

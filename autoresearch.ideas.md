@@ -1,30 +1,18 @@
 # Autoresearch Ideas: Directory Suggestions
 
-## Remaining ideas (diminishing returns)
-- **Bazel/Buck targets**: Parse BUILD files for local dependency references — very niche
+## Remaining ideas (very niche / diminishing returns)
+- **Bazel/Buck targets**: Parse BUILD files for local dep references — very niche
 - **Import graph analysis**: Parse actual import statements — complex, slow, fragile
-- **Flutter pub path deps**: Parse `pubspec.yaml` for `path:` dependencies — Dart/Flutter ecosystem
 - **Swift PM local deps**: Parse Package.swift for `.package(path: "...")` — niche
+- **Elixir mix.exs path deps**: Parse `{:dep, path: "..."}` — niche
 
-## Completed ✅ (see git log for details)
-- Smart sibling filtering (run 2)
-- Ancestor exclusion (run 7)
-- Git root caching (run 8)
-- Docker compose (run 9)
-- TypeScript project refs (run 12)
-- pnpm-workspace.yaml (run 14)
-- Gradle multi-project (run 15)
-- isProject optimization (run 18)
-- Nx monorepo (run 19 — covered by npm workspaces)
-- Maven POM modules (run 20)
-- Lerna (covered by npm workspaces)
-- Yarn Berry link:/portal: (run 25)
-- uv Python workspace (run 26)
-- Package.swift/pubspec.yaml markers (run 27)
-- .NET solution (run 29)
-- PHP Composer (run 31)
-- Depth limits (run 28)
-- Marker reordering (run 24)
+## All completed ✅
+Smart sibling filtering, ancestor exclusion, git root caching, Docker compose,
+TypeScript project refs, pnpm-workspace.yaml, Gradle multi-project, isProject optimization,
+Nx (covered by npm ws), Maven POM modules, Lerna (covered by npm ws), Yarn Berry link:/portal:,
+uv Python workspace, Package.swift/pubspec.yaml markers, .NET solution, PHP Composer,
+depth limits, marker reordering, Flutter/Dart pubspec paths, nested workspaces,
+precision stress test, symlinked deps
 
 ## Not worth pursuing
 - .env references, recently opened in editor, parallel heuristic scanning
