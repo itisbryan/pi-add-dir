@@ -306,6 +306,14 @@ const SCENARIOS: Scenario[] = [
       "elixir-deps/apps/core",
     ],
   },
+  {
+    name: "malformed-config-graceful",
+    cwd: "malformed/app",
+    expected: [
+      // file: dep won't work because JSON is broken, but sibling with AGENTS.md should
+      "malformed/lib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

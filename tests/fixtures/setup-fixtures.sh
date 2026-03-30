@@ -778,4 +778,20 @@ touch "$BASE/elixir-deps/libs/shared/mix.exs"
 echo '# Shared lib' > "$BASE/elixir-deps/libs/shared/CLAUDE.md"
 git -C "$BASE/elixir-deps" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 36: Malformed config files — engine should gracefully skip
+# CWD: malformed/app (has broken package.json)
+# Expected: malformed/lib (sibling with AGENTS.md, only 2 siblings so <=3 threshold)
+# The broken package.json should not crash the engine
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/malformed/app"
+mkdir -p "$BASE/malformed/lib"
+
+# Broken JSON — trailing comma, missing closing brace
+echo '{"name": "app", "dependencies": {"lib": "file:../lib",}}' > "$BASE/malformed/app/package.json"
+echo '{"name": "lib"}' > "$BASE/malformed/lib/package.json"
+echo '# Lib rules' > "$BASE/malformed/lib/AGENTS.md"
+git -C "$BASE/malformed/app" init -q
+git -C "$BASE/malformed/lib" init -q
+
 echo "Fixtures created at $BASE"
