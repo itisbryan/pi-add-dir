@@ -585,7 +585,7 @@ function collectWorkspaceMembers(cwd: string): Candidate[] {
 // Scoring
 // ---------------------------------------------------------------------------
 
-function scoreCandidates(candidates: Candidate[], cwd: string): Suggestion[] {
+function scoreCandidates(candidates: Candidate[], _cwd: string): Suggestion[] {
   // Deduplicate by absolute path, merging reasons and weights
   const byPath = new Map<string, { reasons: string[]; totalWeight: number }>();
 
