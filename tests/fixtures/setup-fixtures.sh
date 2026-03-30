@@ -253,4 +253,61 @@ mkdir -p "$BASE/lone-project/src"
 echo '{"name": "lone"}' > "$BASE/lone-project/package.json"
 git -C "$BASE/lone-project" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 12: Turborepo/pnpm with nested workspace globs
+# CWD: turborepo/apps/marketing
+# Expected: turborepo/packages/config, turborepo/packages/tsconfig, turborepo/apps/docs
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/turborepo/apps/marketing"
+mkdir -p "$BASE/turborepo/apps/docs"
+mkdir -p "$BASE/turborepo/packages/config"
+mkdir -p "$BASE/turborepo/packages/tsconfig"
+
+echo '{"name": "turborepo", "workspaces": ["apps/*", "packages/*"]}' > "$BASE/turborepo/package.json"
+echo '{"name": "marketing"}' > "$BASE/turborepo/apps/marketing/package.json"
+echo '{"name": "docs"}' > "$BASE/turborepo/apps/docs/package.json"
+echo '{"name": "config"}' > "$BASE/turborepo/packages/config/package.json"
+echo '{"name": "tsconfig"}' > "$BASE/turborepo/packages/tsconfig/package.json"
+echo "# Config conventions" > "$BASE/turborepo/packages/config/CLAUDE.md"
+git -C "$BASE/turborepo" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 13: Elixir umbrella app
+# CWD: umbrella/apps/web
+# Expected: umbrella/apps/core, umbrella/apps/mailer
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/umbrella/apps/web"
+mkdir -p "$BASE/umbrella/apps/core"
+mkdir -p "$BASE/umbrella/apps/mailer"
+
+cat > "$BASE/umbrella/mix.exs" << 'ELIXIR'
+defmodule Umbrella.MixProject do
+  use Mix.Project
+  def project do
+    [apps_path: "apps"]
+  end
+end
+ELIXIR
+touch "$BASE/umbrella/apps/web/mix.exs"
+touch "$BASE/umbrella/apps/core/mix.exs"
+touch "$BASE/umbrella/apps/mailer/mix.exs"
+echo "# Core library" > "$BASE/umbrella/apps/core/AGENTS.md"
+git -C "$BASE/umbrella" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 14: Workspace member referencing ANOTHER member via path
+# CWD: cross-ref/packages/api  (depends on packages/db via file:)
+# Expected: cross-ref/packages/db, cross-ref/packages/utils (workspace sibling)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/cross-ref/packages/api"
+mkdir -p "$BASE/cross-ref/packages/db"
+mkdir -p "$BASE/cross-ref/packages/utils"
+
+echo '{"name": "cross-ref", "workspaces": ["packages/*"]}' > "$BASE/cross-ref/package.json"
+echo '{"name": "api", "dependencies": {"db": "file:../db"}}' > "$BASE/cross-ref/packages/api/package.json"
+echo '{"name": "db"}' > "$BASE/cross-ref/packages/db/package.json"
+echo '{"name": "utils"}' > "$BASE/cross-ref/packages/utils/package.json"
+echo "# Database rules" > "$BASE/cross-ref/packages/db/CLAUDE.md"
+git -C "$BASE/cross-ref" init -q
+
 echo "Fixtures created at $BASE"

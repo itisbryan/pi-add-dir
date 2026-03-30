@@ -116,6 +116,31 @@ const SCENARIOS: Scenario[] = [
     cwd: "lone-project",
     expected: [],
   },
+  {
+    name: "turborepo",
+    cwd: "turborepo/apps/marketing",
+    expected: [
+      "turborepo/packages/config",
+      "turborepo/packages/tsconfig",
+      "turborepo/apps/docs",
+    ],
+  },
+  {
+    name: "elixir-umbrella",
+    cwd: "umbrella/apps/web",
+    expected: [
+      "umbrella/apps/core",
+      "umbrella/apps/mailer",
+    ],
+  },
+  {
+    name: "cross-ref-workspace",
+    cwd: "cross-ref/packages/api",
+    expected: [
+      "cross-ref/packages/db",
+      "cross-ref/packages/utils",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
