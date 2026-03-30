@@ -203,12 +203,28 @@ type Candidate = { dir: string; reasons: string[]; weight: number };
 
 /**
  * Collect sibling directories that look like projects.
+ * Only suggests siblings that share the same git repo as cwd, OR have
+ * context files (AGENTS.md/CLAUDE.md) that make them high-value.
+ *
+ * When there are many sibling projects (>3), generic ones without strong
+ * signals are dropped — a "projects folder" with 10 repos means most are
+ * unrelated to the current work.
  */
 function collectSiblings(cwd: string): Candidate[] {
   const parent = path.dirname(cwd);
   if (parent === cwd) return []; // at root
 
-  const candidates: Candidate[] = [];
+  // Determine if cwd is inside a git repo — siblings in the same repo are more relevant
+  const cwdGitRoot = findGitRoot(cwd);
+
+  // First pass: categorize all sibling projects
+  interface SiblingInfo {
+    fullPath: string;
+    sameRepo: boolean;
+    hasContext: boolean;
+  }
+  const siblings: SiblingInfo[] = [];
+
   try {
     const entries = fs.readdirSync(parent, { withFileTypes: true });
     for (const entry of entries) {
@@ -216,16 +232,44 @@ function collectSiblings(cwd: string): Candidate[] {
       if (entry.name.startsWith(".")) continue;
       const fullPath = path.join(parent, entry.name);
       if (fullPath === cwd) continue;
+      if (!isProject(fullPath)) continue;
 
-      if (isProject(fullPath)) {
-        candidates.push({
-          dir: fullPath,
-          reasons: ["sibling project"],
-          weight: 0.3,
-        });
-      }
+      const siblingGitRoot = findGitRoot(fullPath);
+      const sameRepo = !!(cwdGitRoot && siblingGitRoot && cwdGitRoot === siblingGitRoot);
+      const hasContext = hasContextFiles(fullPath) || hasSkills(fullPath);
+
+      siblings.push({ fullPath, sameRepo, hasContext });
     }
   } catch { /* skip */ }
+
+  // When there are many unrelated siblings, only suggest those with strong signals
+  const totalSiblings = siblings.length;
+  const candidates: Candidate[] = [];
+
+  for (const sib of siblings) {
+    if (sib.sameRepo) {
+      candidates.push({
+        dir: sib.fullPath,
+        reasons: ["sibling project (same repo)"],
+        weight: 0.35,
+      });
+    } else if (sib.hasContext) {
+      candidates.push({
+        dir: sib.fullPath,
+        reasons: ["sibling project (has context files)"],
+        weight: 0.25,
+      });
+    } else if (totalSiblings <= 3) {
+      // Few siblings — they're probably closely related, include them
+      candidates.push({
+        dir: sib.fullPath,
+        reasons: ["sibling project"],
+        weight: 0.2,
+      });
+    }
+    // When >3 siblings and no strong signal: skip (too many unrelated projects)
+  }
+
   return candidates;
 }
 
@@ -572,11 +616,12 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
   // Score and deduplicate
   const scored = scoreCandidates(candidates, cwd);
 
-  // Filter out already-added dirs and cwd
+  // Filter out already-added dirs, cwd, and low-scoring noise
   const resolvedCwd = resolvePath(cwd, ".");
   const excluded = new Set([resolvedCwd, ...alreadyAdded]);
+  const MIN_SCORE = 0.15;
 
   return scored
-    .filter(s => !excluded.has(s.absolutePath))
+    .filter(s => !excluded.has(s.absolutePath) && s.score >= MIN_SCORE)
     .slice(0, maxResults);
 }
