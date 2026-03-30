@@ -220,6 +220,14 @@ const SCENARIOS: Scenario[] = [
       "root-as-cwd/packages/cli",
     ],
   },
+  {
+    name: "yarn-berry-link-portal",
+    cwd: "yarn-berry/app",
+    expected: [
+      "yarn-berry/shared",
+      "yarn-berry/utils",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

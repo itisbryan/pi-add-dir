@@ -314,21 +314,20 @@ function collectNpmFileDeps(cwd: string): Candidate[] {
     };
     for (const [name, version] of Object.entries(allDeps)) {
       if (typeof version !== "string") continue;
-      // file: protocol deps
-      if (version.startsWith("file:")) {
-        const relPath = version.slice(5);
-        const resolved = resolvePath(cwd, relPath);
-        if (dirExists(resolved)) {
-          candidates.push({
-            dir: resolved,
-            reasons: [`npm file: dependency (${name})`],
-            weight: 0.6,
-          });
+      // file:, link:, portal: protocol deps (npm file:, yarn link:/portal:)
+      for (const protocol of ["file:", "link:", "portal:"]) {
+        if (version.startsWith(protocol)) {
+          const relPath = version.slice(protocol.length);
+          const resolved = resolvePath(cwd, relPath);
+          if (dirExists(resolved)) {
+            candidates.push({
+              dir: resolved,
+              reasons: [`${protocol} dependency (${name})`],
+              weight: 0.6,
+            });
+          }
+          break;
         }
-      }
-      // workspace: protocol — resolve from workspace root
-      if (version.startsWith("workspace:")) {
-        // These are resolved via monorepo heuristic, skip here
       }
     }
   } catch { /* skip */ }

@@ -528,4 +528,21 @@ echo '# Core rules' > "$BASE/root-as-cwd/packages/core/AGENTS.md"
 echo '{"name": "cli"}' > "$BASE/root-as-cwd/packages/cli/package.json"
 git -C "$BASE/root-as-cwd" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 25: Yarn Berry link: and portal: protocols
+# CWD: yarn-berry/app
+# Expected: yarn-berry/shared (link:), yarn-berry/utils (portal:)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/yarn-berry/app"
+mkdir -p "$BASE/yarn-berry/shared"
+mkdir -p "$BASE/yarn-berry/utils"
+
+echo '{"name": "app", "dependencies": {"shared": "link:../shared", "utils": "portal:../utils"}}' > "$BASE/yarn-berry/app/package.json"
+echo '{"name": "shared"}' > "$BASE/yarn-berry/shared/package.json"
+echo '# Shared rules' > "$BASE/yarn-berry/shared/AGENTS.md"
+echo '{"name": "utils"}' > "$BASE/yarn-berry/utils/package.json"
+git -C "$BASE/yarn-berry/app" init -q
+git -C "$BASE/yarn-berry/shared" init -q
+git -C "$BASE/yarn-berry/utils" init -q
+
 echo "Fixtures created at $BASE"
