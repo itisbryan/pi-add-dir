@@ -68,6 +68,9 @@ const PROJECT_MARKERS = [
   "pubspec.yaml",     // Dart/Flutter
 ];
 
+/** Extensions that mark a directory as a .NET project (checked separately since they need glob) */
+const DOTNET_PROJECT_EXTENSIONS = [".csproj", ".fsproj", ".vbproj"];
+
 /** Files/dirs that make a directory extra valuable for pi-add-dir */
 const CONTEXT_MARKERS = [
   "AGENTS.md",
@@ -108,14 +111,21 @@ function readFileSafe(filePath: string): string | null {
 }
 
 function isProject(dir: string): boolean {
-  return PROJECT_MARKERS.some(marker => {
+  if (PROJECT_MARKERS.some(marker => {
     try {
       fs.statSync(path.join(dir, marker));
-      return true; // exists (file or directory)
+      return true;
     } catch {
       return false;
     }
-  });
+  })) return true;
+
+  // Check for .NET project files (*.csproj, *.fsproj, *.vbproj)
+  try {
+    return fs.readdirSync(dir).some(f => DOTNET_PROJECT_EXTENSIONS.some(ext => f.endsWith(ext)));
+  } catch {
+    return false;
+  }
 }
 
 function hasContextFiles(dir: string): boolean {
@@ -219,6 +229,10 @@ function findWorkspaceRoot(cwd: string): string | null {
     // Maven multi-module (pom.xml with <modules>)
     const pomXml = readFileSafe(path.join(current, "pom.xml"));
     if (pomXml && pomXml.includes("<modules>")) return current;
+    // .NET solution
+    try {
+      if (fs.readdirSync(current).some(f => f.endsWith(".sln"))) return current;
+    } catch { /* skip */ }
     // Python/uv workspace (pyproject.toml with [tool.uv.workspace] members)
     const pyprojectWs = readFileSafe(path.join(current, "pyproject.toml"));
     if (pyprojectWs && pyprojectWs.includes("[tool.uv.workspace]")) return current;
@@ -702,6 +716,32 @@ function collectWorkspaceMembers(cwd: string): Candidate[] {
       }
     }
   }
+
+  // --- .NET solution (.sln) ---
+  try {
+    const slnFiles = fs.readdirSync(wsRoot).filter(f => f.endsWith(".sln"));
+    for (const slnFile of slnFiles.slice(0, 1)) { // Only first .sln
+      const slnContent = readFileSafe(path.join(wsRoot, slnFile));
+      if (!slnContent) continue;
+      // Match: Project("{...}") = "Name", "path\to\project.csproj", "{...}"
+      const projRegex = /Project\([^)]+\)\s*=\s*"[^"]+"\s*,\s*"([^"]+)"/g;
+      let slnMatch;
+      while ((slnMatch = projRegex.exec(slnContent)) !== null) {
+        const projPath = slnMatch[1].replace(/\\/g, "/"); // Convert Windows paths
+        // Get the directory containing the .csproj/.fsproj
+        const projDir = path.dirname(projPath);
+        if (!projDir || projDir === ".") continue;
+        const fullPath = resolvePath(wsRoot, projDir);
+        if (fullPath !== cwd && dirExists(fullPath)) {
+          candidates.push({
+            dir: fullPath,
+            reasons: [".NET solution project"],
+            weight: 0.5,
+          });
+        }
+      }
+    }
+  } catch { /* skip */ }
 
   // --- uv/Python workspace (pyproject.toml with [tool.uv.workspace] members) ---
   const pyprojectRoot = readFileSafe(path.join(wsRoot, "pyproject.toml"));

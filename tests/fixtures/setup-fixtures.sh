@@ -576,4 +576,28 @@ name = "shared"
 EOF
 git -C "$BASE/uv-workspace" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 27: .NET solution with multiple projects
+# CWD: dotnet-sln/src/WebApi
+# Expected: dotnet-sln/src/Core, dotnet-sln/src/Infrastructure
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/dotnet-sln/src/WebApi"
+mkdir -p "$BASE/dotnet-sln/src/Core"
+mkdir -p "$BASE/dotnet-sln/src/Infrastructure"
+
+cat > "$BASE/dotnet-sln/MyApp.sln" << 'SLNEOF'
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApi", "src\WebApi\WebApi.csproj", "{1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "src\Core\Core.csproj", "{2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "src\Infrastructure\Infrastructure.csproj", "{3}"
+EndProject
+SLNEOF
+touch "$BASE/dotnet-sln/src/WebApi/WebApi.csproj"
+touch "$BASE/dotnet-sln/src/Core/Core.csproj"
+echo '# Domain rules' > "$BASE/dotnet-sln/src/Core/AGENTS.md"
+touch "$BASE/dotnet-sln/src/Infrastructure/Infrastructure.csproj"
+git -C "$BASE/dotnet-sln" init -q
+
 echo "Fixtures created at $BASE"

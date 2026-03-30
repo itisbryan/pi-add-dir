@@ -236,6 +236,14 @@ const SCENARIOS: Scenario[] = [
       "uv-workspace/libs/shared",
     ],
   },
+  {
+    name: "dotnet-solution",
+    cwd: "dotnet-sln/src/WebApi",
+    expected: [
+      "dotnet-sln/src/Core",
+      "dotnet-sln/src/Infrastructure",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
