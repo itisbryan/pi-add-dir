@@ -162,14 +162,16 @@ function resolvePath(base: string, rel: string): string {
 /** Cache for git root lookups — avoids re-walking for every sibling */
 const gitRootCache = new Map<string, string | null>();
 
-/** Find the git root by walking up from cwd */
+/** Find the git root by walking up from cwd. Stops after 10 levels. */
 function findGitRoot(cwd: string): string | null {
   const cached = gitRootCache.get(cwd);
   if (cached !== undefined) return cached;
 
   let current = cwd;
   const visited: string[] = [cwd];
-  while (true) {
+  let depth = 0;
+  while (depth < 10) {
+    depth++;
     if (dirExists(path.join(current, ".git")) || fileExists(path.join(current, ".git"))) {
       // Cache result for all visited paths
       for (const v of visited) gitRootCache.set(v, current);
@@ -184,12 +186,19 @@ function findGitRoot(cwd: string): string | null {
     current = parent;
     visited.push(current);
   }
+  // Depth limit reached — cache null for visited paths
+  for (const v of visited) gitRootCache.set(v, null);
+  return null;
 }
 
-/** Find the workspace root by walking up looking for workspace config files */
+/** Find the workspace root by walking up looking for workspace config files.
+ *  Stops after 10 levels to avoid expensive traversal to / on lone projects. */
 function findWorkspaceRoot(cwd: string): string | null {
   let current = cwd;
-  while (true) {
+  let depth = 0;
+  const MAX_DEPTH = 10;
+  while (depth < MAX_DEPTH) {
+    depth++;
     // npm/yarn workspaces (via package.json)
     const pkg = readFileSafe(path.join(current, "package.json"));
     if (pkg) {
@@ -220,6 +229,7 @@ function findWorkspaceRoot(cwd: string): string | null {
     if (parent === current) return null;
     current = parent;
   }
+  return null; // depth limit reached
 }
 
 // ---------------------------------------------------------------------------
