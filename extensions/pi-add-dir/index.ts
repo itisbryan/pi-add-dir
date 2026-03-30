@@ -4,22 +4,29 @@
  * Loads AGENTS.md / CLAUDE.md and discovers skills from added directories,
  * injecting them into the system prompt every turn. Persists across restarts.
  *
+ * Skills from external directories are registered natively via the
+ * `resources_discover` event, making them available as `/skill:name` commands.
+ *
  * Commands:
  *   /add-dir <path>     — add an external directory
  *   /remove-dir [path]  — remove a directory (interactive if no path)
  *   /dirs               — list all added directories
  *
- * Tool:
- *   add_directory       — lets the LLM request adding a directory
+ * Tools:
+ *   add_directory           — lets the LLM request adding a directory
+ *   search_external_files   — search for files across all external directories
  *
  * Widget:
  *   Shows active external directories above the editor
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { Text, truncateToWidth } from "@mariozechner/pi-tui";
+import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
+import * as childProcess from "node:child_process";
+import * as crypto from "node:crypto";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 // ---------------------------------------------------------------------------
@@ -42,8 +49,12 @@ interface DirContext {
   agentsMd: string | null;
   /** Content of CLAUDE.md if found */
   claudeMd: string | null;
+  /** Skills discovered (name → SKILL.md absolute path) */
+  skillPaths: Map<string, string>;
   /** Skills discovered (name → SKILL.md content) */
   skills: Map<string, string>;
+  /** Extensions found in .pi/extensions/ */
+  extensionPaths: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -59,9 +70,13 @@ const SKILL_DIRS = [
   ".claude/skills",
 ];
 
+// Extension directories to scan, relative to a project root
+const EXTENSION_DIRS = [
+  ".pi/extensions",
+];
+
 function resolveDir(input: string, cwd: string): string {
   const resolved = path.isAbsolute(input) ? input : path.resolve(cwd, input);
-  // Normalize trailing slashes and resolve symlinks where possible
   try {
     return fs.realpathSync(resolved);
   } catch {
@@ -86,14 +101,55 @@ function readFileSafe(filePath: string): string | null {
 }
 
 /**
- * Scan a directory for context files (AGENTS.md, CLAUDE.md) and skills.
+ * Generate a deterministic hash for a cwd to use as a temp file key.
+ */
+function cwdHash(cwd: string): string {
+  return crypto.createHash("sha256").update(cwd).digest("hex").slice(0, 12);
+}
+
+/**
+ * Path to the temp state file used by resources_discover.
+ * Keyed by cwd so different projects don't share state.
+ */
+function getTempStatePath(cwd: string): string {
+  return path.join(os.tmpdir(), `pi-add-dir-${cwdHash(cwd)}.json`);
+}
+
+/**
+ * Write directory list to the temp state file so resources_discover can read it.
+ */
+function writeTempState(cwd: string, dirs: AddedDir[]): void {
+  try {
+    fs.writeFileSync(getTempStatePath(cwd), JSON.stringify({ dirs }), "utf-8");
+  } catch {
+    // Non-critical — temp state is a performance optimization
+  }
+}
+
+/**
+ * Read directory list from the temp state file.
+ */
+function readTempState(cwd: string): AddedDir[] {
+  try {
+    const content = fs.readFileSync(getTempStatePath(cwd), "utf-8");
+    const data = JSON.parse(content) as { dirs?: AddedDir[] };
+    return data.dirs ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Scan a directory for context files (AGENTS.md, CLAUDE.md), skills, and extensions.
  */
 function scanDirContext(dir: string): DirContext {
   const ctx: DirContext = {
     dir,
     agentsMd: null,
     claudeMd: null,
+    skillPaths: new Map(),
     skills: new Map(),
+    extensionPaths: [],
   };
 
   // Read context files from root and .pi/ subdirectory
@@ -121,8 +177,10 @@ function scanDirContext(dir: string): DirContext {
       const entries = fs.readdirSync(fullSkillDir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const skillMd = readFileSafe(path.join(fullSkillDir, entry.name, "SKILL.md"));
+        const skillMdPath = path.join(fullSkillDir, entry.name, "SKILL.md");
+        const skillMd = readFileSafe(skillMdPath);
         if (skillMd) {
+          ctx.skillPaths.set(entry.name, skillMdPath);
           ctx.skills.set(entry.name, skillMd);
         }
       }
@@ -131,7 +189,56 @@ function scanDirContext(dir: string): DirContext {
     }
   }
 
+  // Discover extensions
+  for (const extDir of EXTENSION_DIRS) {
+    const fullExtDir = path.join(dir, extDir);
+    if (!dirExists(fullExtDir)) continue;
+
+    try {
+      const entries = fs.readdirSync(fullExtDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith(".ts")) {
+          ctx.extensionPaths.push(path.join(fullExtDir, entry.name));
+        } else if (entry.isDirectory()) {
+          const indexPath = path.join(fullExtDir, entry.name, "index.ts");
+          if (readFileSafe(indexPath) !== null) {
+            ctx.extensionPaths.push(indexPath);
+          }
+        }
+      }
+    } catch {
+      // Skip unreadable directories
+    }
+  }
+
   return ctx;
+}
+
+/**
+ * Collect all SKILL.md paths from a list of directories.
+ */
+function collectSkillPaths(dirs: AddedDir[]): string[] {
+  const skillPaths: string[] = [];
+  for (const dir of dirs) {
+    if (!dirExists(dir.absolutePath)) continue;
+    for (const skillDir of SKILL_DIRS) {
+      const fullSkillDir = path.join(dir.absolutePath, skillDir);
+      if (!dirExists(fullSkillDir)) continue;
+      try {
+        const entries = fs.readdirSync(fullSkillDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          const skillMdPath = path.join(fullSkillDir, entry.name, "SKILL.md");
+          if (readFileSafe(skillMdPath) !== null) {
+            skillPaths.push(skillMdPath);
+          }
+        }
+      } catch {
+        // Skip unreadable directories
+      }
+    }
+  }
+  return skillPaths;
 }
 
 /**
@@ -156,19 +263,17 @@ function buildContextInjection(dirs: AddedDir[]): string {
       sections.push(`\n#### CLAUDE.md (from ${dir.label})\n${ctx.claudeMd}`);
     }
 
-    // Skills
+    // Skills — now registered natively, just mention them
     if (ctx.skills.size > 0) {
-      sections.push(`\n#### Skills discovered in ${dir.label}:`);
+      sections.push(`\n#### Skills from ${dir.label} (registered as /skill:name commands):`);
       for (const [name, content] of ctx.skills) {
-        // Extract just the YAML frontmatter description for the listing
         const descMatch = content.match(/^---\n[\s\S]*?description:\s*>?\s*\n?\s*(.*?)(?:\n---|\n\w)/m);
         const desc = descMatch?.[1]?.trim() ?? "No description";
-        sections.push(`- **${name}**: ${desc}`);
+        sections.push(`- **${name}**: ${desc} — use \`/skill:${name}\` or read \`${ctx.skillPaths.get(name)}\``);
       }
-      sections.push(`\nTo use a skill from ${dir.label}, read its SKILL.md at \`${dir.absolutePath}/.pi/skills/<name>/SKILL.md\` (or .agents/skills/).`);
     }
 
-    // Summary of directory contents (lightweight — just top-level listing)
+    // Summary of directory contents
     try {
       const entries = fs.readdirSync(dir.absolutePath, { withFileTypes: true });
       const topLevel = entries
@@ -194,7 +299,25 @@ export default function addDirExtension(pi: ExtensionAPI) {
   // Per-session state
   let addedDirs: AddedDir[] = [];
 
-  const getSessionKey = (ctx: ExtensionContext) => ctx.sessionManager.getSessionId();
+  // Track the cwd for temp state file operations
+  let currentCwd: string = "";
+
+  // -----------------------------------------------------------------------
+  // Resources discovery — register external skills natively
+  // -----------------------------------------------------------------------
+
+  // This event fires before session_start, so we read from a temp file
+  // that was written when dirs were added/removed. This allows skills from
+  // external directories to be discovered as proper /skill:name commands.
+  pi.on("resources_discover", (event, _ctx) => {
+    const dirs = readTempState(event.cwd);
+    if (dirs.length === 0) return;
+
+    const skillPaths = collectSkillPaths(dirs);
+    if (skillPaths.length === 0) return;
+
+    return { skillPaths };
+  });
 
   // -----------------------------------------------------------------------
   // State reconstruction
@@ -202,6 +325,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
 
   function reconstructState(ctx: ExtensionContext) {
     addedDirs = [];
+    currentCwd = ctx.cwd;
 
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type !== "custom") continue;
@@ -210,11 +334,19 @@ export default function addDirExtension(pi: ExtensionAPI) {
       }
     }
 
+    // Sync temp state file so resources_discover stays current
+    writeTempState(currentCwd, addedDirs);
+
     updateWidget(ctx);
   }
 
-  function persistState() {
+  function persistState(cwd?: string) {
     pi.appendEntry("add-dir:state", { dirs: addedDirs });
+    // Also write to temp file for resources_discover
+    const effectiveCwd = cwd || currentCwd;
+    if (effectiveCwd) {
+      writeTempState(effectiveCwd, addedDirs);
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -248,27 +380,32 @@ export default function addDirExtension(pi: ExtensionAPI) {
   // Core operations
   // -----------------------------------------------------------------------
 
-  function addDir(dirPath: string, cwd: string, ctx: ExtensionContext): { ok: boolean; message: string } {
+  function addDir(dirPath: string, cwd: string, ctx: ExtensionContext): {
+    ok: boolean;
+    message: string;
+    hasNewSkills: boolean;
+    extensionHints: string[];
+  } {
     const absolutePath = resolveDir(dirPath, cwd);
 
     if (!dirExists(absolutePath)) {
-      return { ok: false, message: `Directory does not exist: ${absolutePath}` };
+      return { ok: false, message: `Directory does not exist: ${absolutePath}`, hasNewSkills: false, extensionHints: [] };
     }
 
     // Check for duplicates
     if (addedDirs.some(d => d.absolutePath === absolutePath)) {
-      return { ok: false, message: `Already added: ${absolutePath}` };
+      return { ok: false, message: `Already added: ${absolutePath}`, hasNewSkills: false, extensionHints: [] };
     }
 
     // Check it's not the current cwd
     const resolvedCwd = resolveDir(cwd, cwd);
     if (absolutePath === resolvedCwd) {
-      return { ok: false, message: `That's the current working directory — already in scope.` };
+      return { ok: false, message: `That's the current working directory — already in scope.`, hasNewSkills: false, extensionHints: [] };
     }
 
     const label = path.basename(absolutePath);
     addedDirs.push({ absolutePath, label, addedAt: Date.now() });
-    persistState();
+    persistState(cwd);
     updateWidget(ctx);
 
     // Report what was found
@@ -278,20 +415,52 @@ export default function addDirExtension(pi: ExtensionAPI) {
     if (dirCtx.claudeMd) found.push("CLAUDE.md");
     if (dirCtx.skills.size > 0) found.push(`${dirCtx.skills.size} skill(s)`);
 
+    const hasNewSkills = dirCtx.skills.size > 0;
+
+    // Detect extensions and build hints
+    const extensionHints: string[] = [];
+    if (dirCtx.extensionPaths.length > 0) {
+      extensionHints.push(
+        `⚡ Found ${dirCtx.extensionPaths.length} extension(s) in ${label}/.pi/extensions/.`,
+        `   To enable them, add to your settings.json:`,
+        `   { "extensions": ["${absolutePath}/.pi/extensions"] }`,
+        `   Then /reload to activate.`,
+      );
+    }
+
     const foundStr = found.length > 0 ? ` Found: ${found.join(", ")}.` : " No context files found.";
-    return { ok: true, message: `Added ${label} (${absolutePath}).${foundStr}` };
+    let message = `Added ${label} (${absolutePath}).${foundStr}`;
+    if (hasNewSkills) {
+      message += ` Reloading to register skills as /skill:name commands...`;
+    }
+
+    return { ok: true, message, hasNewSkills, extensionHints };
   }
 
-  function removeDir(absolutePath: string, ctx: ExtensionContext): { ok: boolean; message: string } {
+  function removeDir(absolutePath: string, ctx: ExtensionContext): {
+    ok: boolean;
+    message: string;
+    hadSkills: boolean;
+  } {
     const idx = addedDirs.findIndex(d => d.absolutePath === absolutePath);
     if (idx === -1) {
-      return { ok: false, message: `Not found: ${absolutePath}` };
+      return { ok: false, message: `Not found: ${absolutePath}`, hadSkills: false };
     }
+
+    // Check if this dir had skills before removing
+    const dirCtx = scanDirContext(absolutePath);
+    const hadSkills = dirCtx.skills.size > 0;
 
     const removed = addedDirs.splice(idx, 1)[0];
     persistState();
     updateWidget(ctx);
-    return { ok: true, message: `Removed ${removed.label} (${removed.absolutePath}).` };
+
+
+    let message = `Removed ${removed.label} (${removed.absolutePath}).`;
+    if (hadSkills) {
+      message += ` Reloading to unregister skills...`;
+    }
+    return { ok: true, message, hadSkills };
   }
 
   // -----------------------------------------------------------------------
@@ -317,23 +486,42 @@ export default function addDirExtension(pi: ExtensionAPI) {
   });
 
   // -----------------------------------------------------------------------
+  // Internal reload command (used by tools to trigger reload)
+  // -----------------------------------------------------------------------
+
+  pi.registerCommand("_add-dir-reload", {
+    description: "Internal: reload pi to discover skills from external directories",
+    handler: async (_args, ctx) => {
+      await ctx.reload();
+    },
+  });
+
+  // -----------------------------------------------------------------------
   // Commands
   // -----------------------------------------------------------------------
 
   pi.registerCommand("add-dir", {
     description: "Add an external directory to this session",
     handler: async (args, ctx) => {
-      if (!args?.trim()) {
-        // Interactive: ask for path
-        const inputPath = await ctx.ui.input("Directory path:", "");
-        if (!inputPath) return;
-        const result = addDir(inputPath, ctx.cwd, ctx);
-        ctx.ui.notify(result.message, result.ok ? "info" : "error");
-        return;
+      let inputPath = args?.trim();
+      if (!inputPath) {
+        const prompted = await ctx.ui.input("Directory path:", "");
+        if (!prompted) return;
+        inputPath = prompted;
       }
 
-      const result = addDir(args.trim(), ctx.cwd, ctx);
+      const result = addDir(inputPath, ctx.cwd, ctx);
       ctx.ui.notify(result.message, result.ok ? "info" : "error");
+
+      // Show extension hints if any
+      if (result.extensionHints.length > 0) {
+        ctx.ui.notify(result.extensionHints.join("\n"), "warning");
+      }
+
+      // Auto-reload if skills were found so they register as /skill:name
+      if (result.ok && result.hasNewSkills) {
+        await ctx.reload();
+      }
     },
   });
 
@@ -345,23 +533,28 @@ export default function addDirExtension(pi: ExtensionAPI) {
         return;
       }
 
+      let absolutePath: string | undefined;
+
       if (args?.trim()) {
-        const absolutePath = resolveDir(args.trim(), ctx.cwd);
-        const result = removeDir(absolutePath, ctx);
-        ctx.ui.notify(result.message, result.ok ? "info" : "error");
-        return;
+        absolutePath = resolveDir(args.trim(), ctx.cwd);
+      } else {
+        // Interactive: pick from list
+        const choices = addedDirs.map(d => `${d.label} — ${d.absolutePath}`);
+        const selected = await ctx.ui.select("Remove which directory?", choices);
+        if (selected === undefined) return;
+        const selectedDir = addedDirs[Number(selected)];
+        absolutePath = selectedDir?.absolutePath;
       }
 
-      // Interactive: pick from list
-      const choices = addedDirs.map(d => `${d.label} — ${d.absolutePath}`);
-      const selected = await ctx.ui.select("Remove which directory?", choices);
-      if (selected === undefined) return;
+      if (!absolutePath) return;
 
-      const dir = addedDirs[selected];
-      if (!dir) return;
-
-      const result = removeDir(dir.absolutePath, ctx);
+      const result = removeDir(absolutePath, ctx);
       ctx.ui.notify(result.message, result.ok ? "info" : "error");
+
+      // Auto-reload if skills were present so they get unregistered
+      if (result.ok && result.hadSkills) {
+        await ctx.reload();
+      }
     },
   });
 
@@ -379,12 +572,20 @@ export default function addDirExtension(pi: ExtensionAPI) {
         const badges: string[] = [];
         if (dirCtx.agentsMd) badges.push("AGENTS.md");
         if (dirCtx.claudeMd) badges.push("CLAUDE.md");
-        if (dirCtx.skills.size > 0) badges.push(`${dirCtx.skills.size} skills`);
+        if (dirCtx.skills.size > 0) badges.push(`${dirCtx.skills.size} skill(s)`);
+        if (dirCtx.extensionPaths.length > 0) badges.push(`${dirCtx.extensionPaths.length} extension(s) ⚡`);
 
         lines.push(`  📂 ${dir.label}`);
         lines.push(`     ${dir.absolutePath}`);
         if (badges.length > 0) {
           lines.push(`     Found: ${badges.join(", ")}`);
+        }
+        if (dirCtx.skills.size > 0) {
+          const skillNames = [...dirCtx.skills.keys()].map(s => `/skill:${s}`).join(", ");
+          lines.push(`     Skills: ${skillNames}`);
+        }
+        if (dirCtx.extensionPaths.length > 0) {
+          lines.push(`     ⚡ Extensions found — add to settings.json to enable`);
         }
         lines.push("");
       }
@@ -440,8 +641,19 @@ export default function addDirExtension(pi: ExtensionAPI) {
       }
       if (dirCtx.skills.size > 0) {
         response.push(`\nDiscovered skills: ${[...dirCtx.skills.keys()].join(", ")}`);
+        response.push("Skills will be registered as /skill:name commands after reload.");
+      }
+      if (dirCtx.extensionPaths.length > 0) {
+        response.push(`\n⚡ Found ${dirCtx.extensionPaths.length} extension(s) in .pi/extensions/.`);
+        response.push(`To enable: add "${resolveDir(dirPath, ctx.cwd)}/.pi/extensions" to settings.json extensions array, then /reload.`);
       }
       response.push(`\nYou can now access files at: ${resolveDir(dirPath, ctx.cwd)}`);
+
+      // Trigger reload if skills found so they register as /skill:name
+      if (dirCtx.skills.size > 0) {
+        pi.sendUserMessage("/_add-dir-reload", { deliverAs: "followUp" });
+        response.push("\nTriggering reload to register skills as /skill:name commands...");
+      }
 
       return {
         content: [{ type: "text", text: response.join("\n") }],
@@ -451,6 +663,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
           hasClaudeMd: !!dirCtx.claudeMd,
           skillCount: dirCtx.skills.size,
           skillNames: [...dirCtx.skills.keys()],
+          extensionCount: dirCtx.extensionPaths.length,
         },
       };
     },
@@ -472,6 +685,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
         hasClaudeMd?: boolean;
         skillCount?: number;
         skillNames?: string[];
+        extensionCount?: number;
       } | undefined;
 
       if (!details) {
@@ -489,6 +703,9 @@ export default function addDirExtension(pi: ExtensionAPI) {
       if (details.skillCount && details.skillCount > 0) {
         badges.push(theme.fg("warning", `${details.skillCount} skills`));
       }
+      if (details.extensionCount && details.extensionCount > 0) {
+        badges.push(theme.fg("dim", `${details.extensionCount} ext ⚡`));
+      }
       if (badges.length > 0) {
         parts.push(theme.fg("dim", " │ ") + badges.join(theme.fg("dim", ", ")));
       }
@@ -498,6 +715,134 @@ export default function addDirExtension(pi: ExtensionAPI) {
       }
 
       return new Text(parts.join(""), 0, 0);
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // LLM Tool — search files across external directories
+  // -----------------------------------------------------------------------
+
+  pi.registerTool({
+    name: "search_external_files",
+    label: "Search External Files",
+    description:
+      "Search for files across all external directories added to this session. " +
+      "Use this when you need to find files in external directories, since the @ file picker " +
+      "only searches the current working directory.",
+    promptSnippet: "Search for files across all added external directories by name pattern",
+    promptGuidelines: [
+      "Use search_external_files when you need to find a file in an external directory but don't know its exact path.",
+      "Supports glob-style patterns like '*.ts', '**/*.test.js', 'src/**/*.rb'.",
+      "Returns matching file paths with their parent directory labels.",
+    ],
+    parameters: Type.Object({
+      pattern: Type.String({
+        description: "File name or glob pattern to search for (e.g., '*.ts', 'config/**', 'README.md')",
+      }),
+      maxResults: Type.Optional(
+        Type.Number({
+          description: "Maximum number of results to return (default: 50)",
+        })
+      ),
+    }),
+
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      if (addedDirs.length === 0) {
+        throw new Error("No external directories added. Use /add-dir or add_directory first.");
+      }
+
+      const maxResults = params.maxResults ?? 50;
+      const pattern = params.pattern.replace(/^@/, "");
+
+      // Use find command for each directory
+      const results: { dir: string; label: string; files: string[] }[] = [];
+      let totalFound = 0;
+
+      for (const dir of addedDirs) {
+        if (signal?.aborted) break;
+        if (!dirExists(dir.absolutePath)) continue;
+
+        try {
+          const remaining = maxResults - totalFound;
+          if (remaining <= 0) break;
+
+          // Use spawnSync with array args to avoid shell injection
+          const hasSlash = pattern.includes("/");
+          const findFlag = hasSlash ? "-path" : "-name";
+          const findArgs = [
+            dir.absolutePath,
+            "-not", "-path", "*/node_modules/*",
+            "-not", "-path", "*/.git/*",
+            findFlag, pattern,
+            "-type", "f",
+          ];
+          const result = childProcess.spawnSync("find", findArgs, {
+            encoding: "utf-8",
+            timeout: 10_000,
+          });
+          const output = (result.stdout ?? "").trim();
+          const allFiles = output ? output.split("\n").filter(Boolean) : [];
+          const files = allFiles.slice(0, remaining);
+
+          if (files.length > 0) {
+            results.push({ dir: dir.absolutePath, label: dir.label, files });
+            totalFound += files.length;
+          }
+        } catch {
+          // Skip dirs where find fails
+        }
+      }
+
+      if (totalFound === 0) {
+        return {
+          content: [{ type: "text", text: `No files matching "${pattern}" found in ${addedDirs.length} external director${addedDirs.length === 1 ? "y" : "ies"}.` }],
+          details: { totalFound: 0, pattern },
+        };
+      }
+
+      const lines: string[] = [`Found ${totalFound} file(s) matching "${pattern}":\n`];
+      for (const r of results) {
+        lines.push(`📂 ${r.label} (${r.dir}):`);
+        for (const f of r.files) {
+          lines.push(`  ${f}`);
+        }
+        lines.push("");
+      }
+
+      return {
+        content: [{ type: "text", text: lines.join("\n") }],
+        details: { totalFound, pattern, dirCount: results.length },
+      };
+    },
+
+    renderCall(args, theme, _context) {
+      const pattern = args.pattern?.replace(/^@/, "") ?? "";
+      let text = theme.fg("toolTitle", theme.bold("search_external_files "));
+      text += theme.fg("accent", `"${pattern}"`);
+      text += theme.fg("dim", ` across ${addedDirs.length} dir(s)`);
+      return new Text(text, 0, 0);
+    },
+
+    renderResult(result, { expanded }, theme, _context) {
+      const details = result.details as { totalFound?: number; pattern?: string; dirCount?: number } | undefined;
+
+      if (!details || !details.totalFound) {
+        const content = result.content?.[0];
+        const text = content && "text" in content ? content.text : "No results";
+        return new Text(theme.fg("muted", text), 0, 0);
+      }
+
+      let text = theme.fg("success", `✓ ${details.totalFound} file(s)`);
+      text += theme.fg("dim", ` matching "${details.pattern}" in ${details.dirCount} dir(s)`);
+
+      if (expanded) {
+        const content = result.content?.[0];
+        if (content && "text" in content) {
+          text += "\n" + theme.fg("muted", content.text);
+        }
+      }
+
+      return new Text(text, 0, 0);
     },
   });
 }
