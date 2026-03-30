@@ -201,35 +201,52 @@ function findWorkspaceRoot(cwd: string): string | null {
   const MAX_DEPTH = 10;
   while (depth < MAX_DEPTH) {
     depth++;
-    // npm/yarn workspaces (via package.json)
-    const pkg = readFileSafe(path.join(current, "package.json"));
-    if (pkg) {
-      try {
-        const parsed = JSON.parse(pkg);
-        if (parsed.workspaces) return current;
-      } catch { /* skip */ }
-    }
-    // pnpm workspaces (pnpm-workspace.yaml)
-    if (fileExists(path.join(current, "pnpm-workspace.yaml"))) return current;
-    // Cargo workspace
-    const cargo = readFileSafe(path.join(current, "Cargo.toml"));
-    if (cargo && cargo.includes("[workspace]")) return current;
-    // Go workspace
-    if (fileExists(path.join(current, "go.work"))) return current;
-    // Gradle multi-project
-    if (fileExists(path.join(current, "settings.gradle")) || fileExists(path.join(current, "settings.gradle.kts"))) return current;
-    // Maven multi-module (pom.xml with <modules>)
-    const pomXml = readFileSafe(path.join(current, "pom.xml"));
-    if (pomXml && pomXml.includes("<modules>")) return current;
-    // .NET solution
+
+    // Pre-scan directory contents once per level to avoid many individual stat calls
+    let dirFiles: Set<string>;
     try {
-      if (fs.readdirSync(current).some(f => f.endsWith(".sln"))) return current;
-    } catch { /* skip */ }
-    // Python/uv workspace (pyproject.toml with [tool.uv.workspace] members)
-    const pyprojectWs = readFileSafe(path.join(current, "pyproject.toml"));
-    if (pyprojectWs && pyprojectWs.includes("[tool.uv.workspace]")) return current;
-    // Generic Python monorepo (pyproject.toml at a parent level)
-    if (pyprojectWs && current !== cwd) return current;
+      dirFiles = new Set(fs.readdirSync(current));
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return null;
+      current = parent;
+      continue;
+    }
+
+    // npm/yarn workspaces (via package.json)
+    if (dirFiles.has("package.json")) {
+      const pkg = readFileSafe(path.join(current, "package.json"));
+      if (pkg) {
+        try {
+          const parsed = JSON.parse(pkg);
+          if (parsed.workspaces) return current;
+        } catch { /* skip */ }
+      }
+    }
+    // pnpm workspaces
+    if (dirFiles.has("pnpm-workspace.yaml")) return current;
+    // Cargo workspace
+    if (dirFiles.has("Cargo.toml")) {
+      const cargo = readFileSafe(path.join(current, "Cargo.toml"));
+      if (cargo && cargo.includes("[workspace]")) return current;
+    }
+    // Go workspace
+    if (dirFiles.has("go.work")) return current;
+    // Gradle multi-project
+    if (dirFiles.has("settings.gradle") || dirFiles.has("settings.gradle.kts")) return current;
+    // Maven multi-module
+    if (dirFiles.has("pom.xml")) {
+      const pomXml = readFileSafe(path.join(current, "pom.xml"));
+      if (pomXml && pomXml.includes("<modules>")) return current;
+    }
+    // .NET solution
+    if ([...dirFiles].some(f => f.endsWith(".sln"))) return current;
+    // Python/uv workspace
+    if (dirFiles.has("pyproject.toml")) {
+      const pyprojectWs = readFileSafe(path.join(current, "pyproject.toml"));
+      if (pyprojectWs && pyprojectWs.includes("[tool.uv.workspace]")) return current;
+      if (pyprojectWs && current !== cwd) return current;
+    }
 
     const parent = path.dirname(current);
     if (parent === current) return null;
