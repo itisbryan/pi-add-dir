@@ -188,6 +188,14 @@ const SCENARIOS: Scenario[] = [
       "android-app/lib/network",
     ],
   },
+  {
+    name: "combo-heuristics",
+    cwd: "combo/packages/api",
+    expected: [
+      "combo/packages/db",
+      "combo/packages/logger",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

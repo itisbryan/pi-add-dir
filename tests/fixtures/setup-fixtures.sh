@@ -436,4 +436,34 @@ touch "$BASE/android-app/lib/network/build.gradle.kts"
 echo '# Core library' > "$BASE/android-app/lib/core/AGENTS.md"
 git -C "$BASE/android-app" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 21: Workspace member with pnpm + local file deps + context files
+# Tests that multiple heuristics merge correctly and scoring is right
+# CWD: combo/packages/api
+# Expected: combo/packages/db (dep+workspace+CLAUDE.md), combo/packages/logger (workspace only)
+# NOT expected: combo/tools/scripts (not a workspace member, no dep, >3 siblings)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/combo/packages/api"
+mkdir -p "$BASE/combo/packages/db"
+mkdir -p "$BASE/combo/packages/logger"
+mkdir -p "$BASE/combo/tools/scripts"
+mkdir -p "$BASE/combo/tools/ci"
+mkdir -p "$BASE/combo/tools/docker"
+mkdir -p "$BASE/combo/tools/k8s"
+
+cat > "$BASE/combo/pnpm-workspace.yaml" << 'EOF'
+packages:
+  - 'packages/*'
+EOF
+echo '{"name": "combo"}' > "$BASE/combo/package.json"
+echo '{"name": "api", "dependencies": {"db": "file:../db"}}' > "$BASE/combo/packages/api/package.json"
+echo '{"name": "db"}' > "$BASE/combo/packages/db/package.json"
+echo '# Database conventions' > "$BASE/combo/packages/db/CLAUDE.md"
+echo '{"name": "logger"}' > "$BASE/combo/packages/logger/package.json"
+echo '{"name": "scripts"}' > "$BASE/combo/tools/scripts/package.json"
+echo '{"name": "ci"}' > "$BASE/combo/tools/ci/package.json"
+echo '{"name": "docker"}' > "$BASE/combo/tools/docker/package.json"
+echo '{"name": "k8s"}' > "$BASE/combo/tools/k8s/package.json"
+git -C "$BASE/combo" init -q
+
 echo "Fixtures created at $BASE"
