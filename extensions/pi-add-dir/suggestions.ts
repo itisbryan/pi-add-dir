@@ -69,9 +69,6 @@ const PROJECT_MARKERS = [
   "pubspec.yaml",     // Dart/Flutter
 ];
 
-/** Extensions that mark a directory as a .NET project (checked separately since they need glob) */
-const DOTNET_PROJECT_EXTENSIONS = [".csproj", ".fsproj", ".vbproj"];
-
 /** Files/dirs that make a directory extra valuable for pi-add-dir */
 const CONTEXT_MARKERS = [
   "AGENTS.md",
@@ -122,14 +119,6 @@ function isProject(dir: string): boolean {
   });
 }
 
-/** Check if a dir is a .NET project (has *.csproj, *.fsproj, or *.vbproj). Separate from isProject to avoid readdirSync cost. */
-function isDotnetProject(dir: string): boolean {
-  try {
-    return fs.readdirSync(dir).some(f => DOTNET_PROJECT_EXTENSIONS.some(ext => f.endsWith(ext)));
-  } catch {
-    return false;
-  }
-}
 
 function hasContextFiles(dir: string): boolean {
   return CONTEXT_MARKERS.some(marker => fileExists(path.join(dir, marker)));
