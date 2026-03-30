@@ -15,7 +15,7 @@ beforeAll(() => {
     stdio: "pipe",
   });
   fixtureBase = path.join(tmpBase, "test-projects");
-});
+}, 30_000); // fixture setup creates 24+ scenarios with git init
 
 afterAll(() => {
   fs.rmSync(path.dirname(fixtureBase), { recursive: true, force: true });

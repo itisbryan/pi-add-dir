@@ -46,23 +46,24 @@ export interface SuggestOptions {
 // ---------------------------------------------------------------------------
 
 /** Files that indicate a directory is a real project */
+/** Files that indicate a directory is a real project (ordered by frequency for fast short-circuit) */
 const PROJECT_MARKERS = [
-  "package.json",
-  "Cargo.toml",
-  "go.mod",
-  "pyproject.toml",
-  "Gemfile",
-  "build.gradle",
-  "build.gradle.kts",
-  "pom.xml",
-  "mix.exs",
-  "deno.json",
-  "project.json",    // Nx
-  "Makefile",
-  "CMakeLists.txt",
-  "setup.py",
-  "setup.cfg",
-  ".git",
+  "package.json",     // JS/TS (most common)
+  ".git",             // Any git repo
+  "Cargo.toml",       // Rust
+  "go.mod",           // Go
+  "pyproject.toml",   // Python (modern)
+  "Gemfile",          // Ruby
+  "pom.xml",          // Maven/JVM
+  "build.gradle",     // Gradle
+  "build.gradle.kts", // Gradle (Kotlin DSL)
+  "mix.exs",          // Elixir
+  "Makefile",         // C/C++/general
+  "CMakeLists.txt",   // CMake
+  "setup.py",         // Python (legacy)
+  "setup.cfg",        // Python (legacy)
+  "deno.json",        // Deno
+  "project.json",     // Nx
 ];
 
 /** Files/dirs that make a directory extra valuable for pi-add-dir */
