@@ -75,12 +75,13 @@ And search across external dirs when `@` file picker isn't available:
 
 When you run `/add-dir` without arguments, the extension analyzes your project structure and suggests relevant directories:
 
-- **Workspace members** — npm, Cargo, Go, and Python monorepo packages
+- **Workspace members** — npm, pnpm, Cargo, Go, and Python monorepo packages
 - **Local dependencies** — `file:` deps in package.json, `path:` in Gemfile/Cargo.toml
 - **Git submodules** — paths from `.gitmodules`
 - **Sibling projects** — related projects alongside your cwd
 - **TypeScript project references** — `references` in `tsconfig.json`
 - **Docker Compose services** — `build.context` paths
+- **Gradle project modules** — `include()` in `settings.gradle(.kts)`
 - **Context-rich directories** — prioritizes dirs with `AGENTS.md`, `CLAUDE.md`, or skills
 
 Directories with context files get higher relevance scores, making the most useful suggestions appear first.

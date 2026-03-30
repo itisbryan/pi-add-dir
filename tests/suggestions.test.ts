@@ -132,6 +132,21 @@ describe("suggestDirectories", () => {
     expect(paths).toContain(cwd("docker-micro/user-service"));
   });
 
+  it("finds pnpm workspace members", () => {
+    const result = suggestDirectories({ cwd: cwd("pnpm-mono/apps/web") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("pnpm-mono/packages/ui"));
+    expect(paths).toContain(cwd("pnpm-mono/packages/utils"));
+    expect(paths).toContain(cwd("pnpm-mono/apps/admin"));
+  });
+
+  it("finds Gradle project modules", () => {
+    const result = suggestDirectories({ cwd: cwd("android-app/app") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("android-app/lib/core"));
+    expect(paths).toContain(cwd("android-app/lib/network"));
+  });
+
   it("excludes ancestor dirs when deeply nested", () => {
     const result = suggestDirectories({ cwd: cwd("deep/monorepo/packages/ui/src/components") });
     const paths = result.map(s => s.absolutePath);
