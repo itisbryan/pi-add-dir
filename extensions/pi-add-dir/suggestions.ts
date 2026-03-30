@@ -103,9 +103,9 @@ function readFileSafe(filePath: string): string | null {
 
 function isProject(dir: string): boolean {
   return PROJECT_MARKERS.some(marker => {
-    const full = path.join(dir, marker);
     try {
-      return fs.statSync(full).isFile() || fs.statSync(full).isDirectory();
+      fs.statSync(path.join(dir, marker));
+      return true; // exists (file or directory)
     } catch {
       return false;
     }
