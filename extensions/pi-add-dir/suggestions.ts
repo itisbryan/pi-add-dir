@@ -995,22 +995,39 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
   // Clear git root cache per call (paths may change between calls)
   gitRootCache.clear();
 
-  // Collect candidates from all heuristics
+  // Pre-scan cwd contents once to avoid redundant statSync in each collector
+  let cwdFiles: Set<string>;
+  try {
+    cwdFiles = new Set(fs.readdirSync(cwd));
+  } catch {
+    cwdFiles = new Set();
+  }
+
+  // Collect candidates from heuristics — only call collectors whose trigger files exist
   const candidates: Candidate[] = [
-    ...collectSiblings(cwd),
-    ...collectNpmFileDeps(cwd),
-    ...collectTsProjectRefs(cwd),
-    ...collectComposerPaths(cwd),
-    ...collectPubspecPaths(cwd),
-    ...collectSwiftPMPaths(cwd),
-    ...collectMixPaths(cwd),
-    ...collectGemfilePaths(cwd),
-    ...collectCargoPaths(cwd),
-    ...collectPythonPaths(cwd),
-    ...collectDockerComposePaths(cwd),
-    ...collectSubmodules(cwd),
-    ...collectWorkspaceMembers(cwd),
+    ...collectSiblings(cwd), // always run (scans parent dir)
   ];
+
+  // File-triggered collectors — skip if trigger file doesn't exist in cwd
+  if (cwdFiles.has("package.json"))    candidates.push(...collectNpmFileDeps(cwd));
+  if (cwdFiles.has("tsconfig.json"))   candidates.push(...collectTsProjectRefs(cwd));
+  if (cwdFiles.has("composer.json"))   candidates.push(...collectComposerPaths(cwd));
+  if (cwdFiles.has("pubspec.yaml"))    candidates.push(...collectPubspecPaths(cwd));
+  if (cwdFiles.has("Package.swift"))   candidates.push(...collectSwiftPMPaths(cwd));
+  if (cwdFiles.has("mix.exs"))         candidates.push(...collectMixPaths(cwd));
+  if (cwdFiles.has("Gemfile"))         candidates.push(...collectGemfilePaths(cwd));
+  if (cwdFiles.has("Cargo.toml"))      candidates.push(...collectCargoPaths(cwd));
+  if (cwdFiles.has("pyproject.toml"))  candidates.push(...collectPythonPaths(cwd));
+
+  // Docker Compose — check multiple possible filenames
+  if (cwdFiles.has("docker-compose.yml") || cwdFiles.has("docker-compose.yaml") ||
+      cwdFiles.has("compose.yml") || cwdFiles.has("compose.yaml")) {
+    candidates.push(...collectDockerComposePaths(cwd));
+  }
+
+  // Always run these (they scan git root / workspace root, not cwd)
+  candidates.push(...collectSubmodules(cwd));
+  candidates.push(...collectWorkspaceMembers(cwd));
 
   // Score and deduplicate
   const scored = scoreCandidates(candidates, cwd);
