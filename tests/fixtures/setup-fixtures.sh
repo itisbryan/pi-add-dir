@@ -707,4 +707,29 @@ echo '# Common lib' > "$BASE/nested-ws/packages/sub-mono/libs/common/AGENTS.md"
 echo '{"name": "other-pkg"}' > "$BASE/nested-ws/packages/other-pkg/package.json"
 git -C "$BASE/nested-ws" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 33: Swift Package Manager with local package deps
+# CWD: swift-project/App
+# Expected: swift-project/CoreLib, swift-project/NetworkLib
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/swift-project/App/Sources"
+mkdir -p "$BASE/swift-project/CoreLib/Sources"
+mkdir -p "$BASE/swift-project/NetworkLib/Sources"
+
+cat > "$BASE/swift-project/App/Package.swift" << 'SWIFTEOF'
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(
+    name: "App",
+    dependencies: [
+        .package(path: "../CoreLib"),
+        .package(name: "NetworkLib", path: "../NetworkLib"),
+    ]
+)
+SWIFTEOF
+echo '// swift-tools-version:5.9' > "$BASE/swift-project/CoreLib/Package.swift"
+echo '# Core Library' > "$BASE/swift-project/CoreLib/AGENTS.md"
+echo '// swift-tools-version:5.9' > "$BASE/swift-project/NetworkLib/Package.swift"
+git -C "$BASE/swift-project" init -q
+
 echo "Fixtures created at $BASE"

@@ -489,6 +489,31 @@ function collectComposerPaths(cwd: string): Candidate[] {
 }
 
 /**
+ * Collect Swift Package Manager local package dependencies.
+ */
+function collectSwiftPMPaths(cwd: string): Candidate[] {
+  const packageSwift = readFileSafe(path.join(cwd, "Package.swift"));
+  if (!packageSwift) return [];
+
+  const candidates: Candidate[] = [];
+  // Match: .package(path: "../some-package")
+  const pathRegex = /\.package\s*\(\s*(?:name:\s*"[^"]*"\s*,\s*)?path:\s*"([^"]+)"/g;
+  let match;
+  while ((match = pathRegex.exec(packageSwift)) !== null) {
+    const relPath = match[1];
+    const resolved = resolvePath(cwd, relPath);
+    if (dirExists(resolved)) {
+      candidates.push({
+        dir: resolved,
+        reasons: ["Swift PM local package"],
+        weight: 0.6,
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
  * Collect Dart/Flutter pubspec.yaml path dependencies.
  */
 function collectPubspecPaths(cwd: string): Candidate[] {
@@ -961,6 +986,7 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
     ...collectTsProjectRefs(cwd),
     ...collectComposerPaths(cwd),
     ...collectPubspecPaths(cwd),
+    ...collectSwiftPMPaths(cwd),
     ...collectGemfilePaths(cwd),
     ...collectCargoPaths(cwd),
     ...collectPythonPaths(cwd),

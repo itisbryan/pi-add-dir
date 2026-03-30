@@ -282,6 +282,14 @@ const SCENARIOS: Scenario[] = [
       "nested-ws/packages/sub-mono/libs/common",
     ],
   },
+  {
+    name: "swift-pm-local-deps",
+    cwd: "swift-project/App",
+    expected: [
+      "swift-project/CoreLib",
+      "swift-project/NetworkLib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
