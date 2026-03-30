@@ -52,7 +52,10 @@ adversarial edge cases (deep nesting, symlinks, nested workspaces, precision str
 - **Swift PM**: Parse Package.swift .package(path:) local deps.
 - **Expanded PROJECT_MARKERS**: Added build.gradle.kts, deno.json, project.json, Package.swift, pubspec.yaml, composer.json, .csproj/.fsproj.
 - **Depth limits**: 10-level cap on findGitRoot and findWorkspaceRoot.
-- **33 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap, Docker Compose, TS project refs, pnpm workspace, Gradle multi-project, combo heuristics, Nx monorepo, Maven, cwd-as-workspace-root, Yarn Berry, uv workspace, .NET solution, PHP Composer, precision stress, symlinked dep, Flutter, nested workspaces, Swift PM.
+- **Elixir mix.exs path deps**: Parse {:dep, path: "..."} from mix.exs.
+- **Pre-scan optimization**: Single readdirSync per cwd + per findWorkspaceRoot level, skip collectors whose trigger files don't exist. Latency 1.85→0.78ms.
+- **Adversarial scenarios**: special chars in names, malformed configs, overlapping workspace configs, no-git projects.
+- **38 scenarios**: monorepo, sibling projects, git submodules, Rails/Gemfile, Rust workspace, Python monorepo, extensions, Go workspace, nested monorepo, mixed signals, lone project, turborepo, Elixir umbrella, cross-ref workspace, deep nesting, false-positive trap, Docker Compose, TS project refs, pnpm workspace, Gradle multi-project, combo heuristics, Nx monorepo, Maven, cwd-as-workspace-root, Yarn Berry, uv workspace, .NET solution, PHP Composer, precision stress, symlinked dep, Flutter, nested workspaces, Swift PM.
 - **Integration**: `/add-dir` shows interactive picker with suggestions, `/suggest-dirs` command.
 
 ## Key Insights
