@@ -16,7 +16,8 @@
 - **feat:** Ancestor exclusion — won't suggest a directory you're already inside
 - **perf:** Pre-scan optimization — single `readdirSync` per directory level instead of per-file stat calls
 - **perf:** Git root caching — avoids redundant upward walks for sibling checks
-- **test:** 59 unit tests + 39 benchmark scenarios, F1=1.0 precision/recall
+- **feat:** Improved Ruby support — `Rakefile` project marker, `path:` matched anywhere in gem options, `gemspec path:` directive parsing
+- **test:** 62 unit tests + 43 benchmark scenarios, F1=1.0 precision/recall
 
 ## 1.1.0
 
