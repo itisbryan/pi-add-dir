@@ -163,6 +163,14 @@ const SCENARIOS: Scenario[] = [
       "docker-micro/user-service",
     ],
   },
+  {
+    name: "ts-project-refs",
+    cwd: "ts-refs/packages/app",
+    expected: [
+      "ts-refs/packages/types",
+      "ts-refs/packages/utils",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

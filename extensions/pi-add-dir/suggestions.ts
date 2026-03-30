@@ -401,6 +401,32 @@ function collectPythonPaths(cwd: string): Candidate[] {
 }
 
 /**
+ * Collect tsconfig.json project references (composite projects).
+ */
+function collectTsProjectRefs(cwd: string): Candidate[] {
+  const tsconfig = readFileSafe(path.join(cwd, "tsconfig.json"));
+  if (!tsconfig) return [];
+
+  const candidates: Candidate[] = [];
+  // Match: { "path": "../some-package" } in references array
+  // Use simple regex since tsconfig may have comments (not valid JSON)
+  const refRegex = /"path"\s*:\s*"([^"]+)"/g;
+  let match;
+  while ((match = refRegex.exec(tsconfig)) !== null) {
+    const relPath = match[1];
+    const resolved = resolvePath(cwd, relPath);
+    if (dirExists(resolved)) {
+      candidates.push({
+        dir: resolved,
+        reasons: ["TypeScript project reference"],
+        weight: 0.55,
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
  * Collect Docker Compose build context paths.
  */
 function collectDockerComposePaths(cwd: string): Candidate[] {
@@ -655,6 +681,7 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
   const candidates: Candidate[] = [
     ...collectSiblings(cwd),
     ...collectNpmFileDeps(cwd),
+    ...collectTsProjectRefs(cwd),
     ...collectGemfilePaths(cwd),
     ...collectCargoPaths(cwd),
     ...collectPythonPaths(cwd),

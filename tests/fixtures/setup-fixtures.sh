@@ -367,4 +367,29 @@ git -C "$BASE/docker-micro/gateway" init -q
 git -C "$BASE/docker-micro/auth-service" init -q
 git -C "$BASE/docker-micro/user-service" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 18: TypeScript project references
+# CWD: ts-refs/packages/app
+# Expected: ts-refs/packages/types, ts-refs/packages/utils
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/ts-refs/packages/app"
+mkdir -p "$BASE/ts-refs/packages/types"
+mkdir -p "$BASE/ts-refs/packages/utils"
+
+echo '{"name": "ts-refs", "workspaces": ["packages/*"]}' > "$BASE/ts-refs/package.json"
+echo '{"name": "app"}' > "$BASE/ts-refs/packages/app/package.json"
+cat > "$BASE/ts-refs/packages/app/tsconfig.json" << 'TSEOF'
+{
+  "compilerOptions": { "composite": true },
+  "references": [
+    { "path": "../types" },
+    { "path": "../utils" }
+  ]
+}
+TSEOF
+echo '{"name": "types"}' > "$BASE/ts-refs/packages/types/package.json"
+echo '# Type definitions' > "$BASE/ts-refs/packages/types/AGENTS.md"
+echo '{"name": "utils"}' > "$BASE/ts-refs/packages/utils/package.json"
+git -C "$BASE/ts-refs" init -q
+
 echo "Fixtures created at $BASE"
