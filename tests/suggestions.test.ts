@@ -124,4 +124,19 @@ describe("suggestDirectories", () => {
     // Should have merged reasons
     expect(dbPaths[0].reasons.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("finds Docker Compose build context paths", () => {
+    const result = suggestDirectories({ cwd: cwd("docker-micro/gateway") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("docker-micro/auth-service"));
+    expect(paths).toContain(cwd("docker-micro/user-service"));
+  });
+
+  it("excludes ancestor dirs when deeply nested", () => {
+    const result = suggestDirectories({ cwd: cwd("deep/monorepo/packages/ui/src/components") });
+    const paths = result.map(s => s.absolutePath);
+    // Should find shared (workspace sibling) but NOT ui (ancestor of cwd)
+    expect(paths).toContain(cwd("deep/monorepo/packages/shared"));
+    expect(paths).not.toContain(cwd("deep/monorepo/packages/ui"));
+  });
 });
