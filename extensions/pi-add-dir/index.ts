@@ -20,7 +20,7 @@
  *   Shows active external directories above the editor
  */
 
-import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Text, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import * as childProcess from "node:child_process";
@@ -719,7 +719,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
       if (dirCtx.skills.size > 0) {
         // Use sendMessage to trigger reload without polluting command autocomplete
         pi.sendMessage(
-          { customType: "add-dir:reload", content: [], display: "none" },
+          { customType: "add-dir:reload", content: [], display: false },
           { triggerTurn: false },
         );
         // Schedule the actual reload via a brief delay to let the tool result render first
@@ -742,7 +742,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
       };
     },
 
-    renderCall(args, theme, context) {
+    renderCall(args, theme, _context) {
       const dirPath = args.path?.replace(/^@/, "") ?? "";
       let text = theme.fg("toolTitle", theme.bold("add_directory "));
       text += theme.fg("accent", dirPath);
@@ -752,7 +752,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme, context) {
+    renderResult(result, { expanded }, theme, _context) {
       const details = result.details as {
         directory?: string;
         hasAgentsMd?: boolean;
