@@ -416,4 +416,24 @@ echo '# UI library' > "$BASE/pnpm-mono/packages/ui/AGENTS.md"
 echo '{"name": "utils"}' > "$BASE/pnpm-mono/packages/utils/package.json"
 git -C "$BASE/pnpm-mono" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 20: Gradle multi-project (Android/JVM)
+# CWD: android-app/app
+# Expected: android-app/lib/core, android-app/lib/network
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/android-app/app/src"
+mkdir -p "$BASE/android-app/lib/core/src"
+mkdir -p "$BASE/android-app/lib/network/src"
+
+cat > "$BASE/android-app/settings.gradle.kts" << 'EOF'
+rootProject.name = "android-app"
+include(":app", ":lib:core", ":lib:network")
+EOF
+touch "$BASE/android-app/build.gradle.kts"
+touch "$BASE/android-app/app/build.gradle.kts"
+touch "$BASE/android-app/lib/core/build.gradle.kts"
+touch "$BASE/android-app/lib/network/build.gradle.kts"
+echo '# Core library' > "$BASE/android-app/lib/core/AGENTS.md"
+git -C "$BASE/android-app" init -q
+
 echo "Fixtures created at $BASE"

@@ -199,6 +199,8 @@ function findWorkspaceRoot(cwd: string): string | null {
     if (cargo && cargo.includes("[workspace]")) return current;
     // Go workspace
     if (fileExists(path.join(current, "go.work"))) return current;
+    // Gradle multi-project
+    if (fileExists(path.join(current, "settings.gradle")) || fileExists(path.join(current, "settings.gradle.kts"))) return current;
     // Python monorepo (pyproject.toml at root with multiple sub-projects)
     if (fileExists(path.join(current, "pyproject.toml")) && current !== cwd) {
       // Check if it's a parent that has sub-projects
@@ -629,6 +631,36 @@ function collectWorkspaceMembers(cwd: string): Candidate[] {
         }
       }
     }
+  }
+
+  // --- Gradle multi-project (settings.gradle / settings.gradle.kts) ---
+  const gradleNames = ["settings.gradle", "settings.gradle.kts"];
+  for (const gName of gradleNames) {
+    const gradleSettings = readFileSafe(path.join(wsRoot, gName));
+    if (!gradleSettings) continue;
+    // Match: include(':app', ':lib:core') or include(":app", ":lib:core")
+    // Gradle uses colon-separated module paths that map to directory paths
+    const includeRegex = /include\s*\(?\s*([^)\n]+)/g;
+    let gMatch;
+    while ((gMatch = includeRegex.exec(gradleSettings)) !== null) {
+      const args = gMatch[1];
+      // Extract quoted strings: ':app', ':lib:core', "app"
+      const moduleRegex = /['"][:.]?([^'"]+)['"]/g;
+      let mMatch;
+      while ((mMatch = moduleRegex.exec(args)) !== null) {
+        // Convert Gradle module path (:lib:core) to filesystem path (lib/core)
+        const modulePath = mMatch[1].replace(/^:/, "").replace(/:/g, "/");
+        const fullPath = resolvePath(wsRoot, modulePath);
+        if (fullPath !== cwd && dirExists(fullPath)) {
+          candidates.push({
+            dir: fullPath,
+            reasons: ["Gradle project module"],
+            weight: 0.5,
+          });
+        }
+      }
+    }
+    break; // Only process one settings file
   }
 
   // --- Go workspace ---

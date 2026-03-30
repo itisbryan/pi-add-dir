@@ -180,6 +180,14 @@ const SCENARIOS: Scenario[] = [
       "pnpm-mono/apps/admin",
     ],
   },
+  {
+    name: "gradle-multi-project",
+    cwd: "android-app/app",
+    expected: [
+      "android-app/lib/core",
+      "android-app/lib/network",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
