@@ -220,6 +220,13 @@ describe("suggestDirectories", () => {
     expect(paths).toContain(cwd("maven-project/api"));
   });
 
+  it("finds Swift PM local package deps", () => {
+    const result = suggestDirectories({ cwd: cwd("swift-project/App") });
+    const paths = result.map(s => s.absolutePath);
+    expect(paths).toContain(cwd("swift-project/CoreLib"));
+    expect(paths).toContain(cwd("swift-project/NetworkLib"));
+  });
+
   it("finds workspace members when cwd is workspace root", () => {
     const result = suggestDirectories({ cwd: cwd("root-as-cwd") });
     const paths = result.map(s => s.absolutePath);

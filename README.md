@@ -87,6 +87,7 @@ When you run `/add-dir` without arguments, the extension analyzes your project s
 - **.NET solutions** — project references in `.sln` files
 - **PHP Composer** — `path` repository references in `composer.json`
 - **Flutter/Dart** — `path:` dependencies in `pubspec.yaml`
+- **Swift PM** — `.package(path:)` local dependencies in `Package.swift`
 - **Context-rich directories** — prioritizes dirs with `AGENTS.md`, `CLAUDE.md`, or skills
 
 Directories with context files get higher relevance scores, making the most useful suggestions appear first.
