@@ -141,6 +141,20 @@ const SCENARIOS: Scenario[] = [
       "cross-ref/packages/utils",
     ],
   },
+  {
+    name: "deep-nesting",
+    cwd: "deep/monorepo/packages/ui/src/components",
+    expected: [
+      "deep/monorepo/packages/shared",
+    ],
+  },
+  {
+    name: "false-positive-trap",
+    cwd: "trap/my-app",
+    expected: [
+      "trap/my-lib",
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

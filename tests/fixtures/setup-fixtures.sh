@@ -310,4 +310,35 @@ echo '{"name": "utils"}' > "$BASE/cross-ref/packages/utils/package.json"
 echo "# Database rules" > "$BASE/cross-ref/packages/db/CLAUDE.md"
 git -C "$BASE/cross-ref" init -q
 
+# ---------------------------------------------------------------------------
+# Scenario 15: Deep nesting — cwd is 3 levels deep in a monorepo
+# CWD: deep/monorepo/packages/ui/src/components (not a project root!)
+# The suggestion engine should walk up to find the workspace root
+# Expected: deep/monorepo/packages/shared (workspace sibling via parent project)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/deep/monorepo/packages/ui/src/components"
+mkdir -p "$BASE/deep/monorepo/packages/shared"
+
+echo '{"name": "deep-mono", "workspaces": ["packages/*"]}' > "$BASE/deep/monorepo/package.json"
+echo '{"name": "ui"}' > "$BASE/deep/monorepo/packages/ui/package.json"
+echo '{"name": "shared"}' > "$BASE/deep/monorepo/packages/shared/package.json"
+echo '# Shared module' > "$BASE/deep/monorepo/packages/shared/CLAUDE.md"
+git -C "$BASE/deep/monorepo" init -q
+
+# ---------------------------------------------------------------------------
+# Scenario 16: False positive trap — node_modules should NEVER be suggested
+# CWD: trap/my-app
+# Expected: trap/my-lib (sibling with AGENTS.md)
+# NOT expected: trap/my-app/node_modules/some-pkg (has package.json but is a dep)
+# ---------------------------------------------------------------------------
+mkdir -p "$BASE/trap/my-app/node_modules/some-pkg"
+mkdir -p "$BASE/trap/my-lib"
+
+echo '{"name": "my-app", "dependencies": {"my-lib": "file:../my-lib"}}' > "$BASE/trap/my-app/package.json"
+echo '{"name": "some-pkg"}' > "$BASE/trap/my-app/node_modules/some-pkg/package.json"
+echo '{"name": "my-lib"}' > "$BASE/trap/my-lib/package.json"
+echo '# My lib' > "$BASE/trap/my-lib/AGENTS.md"
+git -C "$BASE/trap/my-app" init -q
+git -C "$BASE/trap/my-lib" init -q
+
 echo "Fixtures created at $BASE"

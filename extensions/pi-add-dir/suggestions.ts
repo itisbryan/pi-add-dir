@@ -616,12 +616,18 @@ export function suggestDirectories(options: SuggestOptions): Suggestion[] {
   // Score and deduplicate
   const scored = scoreCandidates(candidates, cwd);
 
-  // Filter out already-added dirs, cwd, and low-scoring noise
+  // Filter out already-added dirs, cwd itself, ancestors of cwd, and low-scoring noise
   const resolvedCwd = resolvePath(cwd, ".");
   const excluded = new Set([resolvedCwd, ...alreadyAdded]);
   const MIN_SCORE = 0.15;
 
   return scored
-    .filter(s => !excluded.has(s.absolutePath) && s.score >= MIN_SCORE)
+    .filter(s => {
+      if (excluded.has(s.absolutePath)) return false;
+      if (s.score < MIN_SCORE) return false;
+      // Exclude dirs that are ancestors of cwd (we're already inside them)
+      if (resolvedCwd.startsWith(s.absolutePath + path.sep)) return false;
+      return true;
+    })
     .slice(0, maxResults);
 }
