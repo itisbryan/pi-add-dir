@@ -442,6 +442,28 @@ export default function addDirExtension(pi: ExtensionAPI) {
   // Core operations
   // -----------------------------------------------------------------------
 
+  /**
+   * Resolve a user-provided input that might be a label (e.g. "xshop")
+   * instead of a real path. Checks suggestions for a matching label
+   * when the input doesn't resolve to an existing directory.
+   */
+  function resolveInputPath(input: string, cwd: string): string {
+    // If it resolves to an existing dir, use it as-is
+    if (dirExists(resolveDir(input, cwd))) return input;
+
+    // If it looks like a plain name (no separators, not relative), check suggestions
+    if (!path.isAbsolute(input) && !input.includes(path.sep) && !input.startsWith(".")) {
+      const suggestions = suggestDirectories({
+        cwd,
+        alreadyAdded: addedDirs.map(d => d.absolutePath),
+      });
+      const match = suggestions.find(s => s.label === input);
+      if (match) return match.absolutePath;
+    }
+
+    return input;
+  }
+
   function addDir(dirPath: string, cwd: string, ctx: ExtensionContext): {
     ok: boolean;
     message: string;
@@ -596,6 +618,8 @@ export default function addDirExtension(pi: ExtensionAPI) {
         }
       }
 
+      inputPath = resolveInputPath(inputPath, ctx.cwd);
+
       const result = addDir(inputPath, ctx.cwd, ctx);
       ctx.ui.notify(result.message, result.ok ? "info" : "error");
 
@@ -624,17 +648,28 @@ export default function addDirExtension(pi: ExtensionAPI) {
         return;
       }
 
-      const lines: string[] = [`Suggested directories (${suggestions.length}):\n`];
-      for (const s of suggestions) {
+      const choices = suggestions.map(s => {
         const score = Math.round(s.score * 100);
-        lines.push(`  📂 ${s.label}  (${score}% relevance)`);
-        lines.push(`     ${s.absolutePath}`);
-        lines.push(`     ${s.reasons.join(", ")}`);
-        lines.push("");
-      }
-      lines.push("Use /add-dir to pick one, or /add-dir <path> to add directly.");
+        const reasons = s.reasons.slice(0, 2).join(", ");
+        return `${s.label} (${score}%) — ${reasons}`;
+      });
 
-      ctx.ui.notify(lines.join("\n"), "info");
+      const selected = await ctx.ui.select("Suggested directories — pick to add:", choices);
+      if (selected === undefined) return;
+
+      const picked = suggestions[Number(selected)];
+      if (!picked) return;
+
+      const result = addDir(picked.absolutePath, ctx.cwd, ctx);
+      ctx.ui.notify(result.message, result.ok ? "info" : "error");
+
+      if (result.extensionHints.length > 0) {
+        ctx.ui.notify(result.extensionHints.join("\n"), "warning");
+      }
+
+      if (result.ok && result.hasNewSkills) {
+        await ctx.reload();
+      }
     },
   });
 
@@ -745,7 +780,7 @@ export default function addDirExtension(pi: ExtensionAPI) {
     }),
 
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const dirPath = params.path.replace(/^@/, ""); // Strip @ prefix (some models add it)
+      const dirPath = resolveInputPath(params.path.replace(/^@/, ""), ctx.cwd);
       const result = addDir(dirPath, ctx.cwd, ctx);
 
       if (!result.ok) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+### Label-Based Directory Resolution & Interactive Suggestions
+
+- **feat:** `/add-dir xshop` now resolves labels from suggestions — no need to type full paths after seeing `/suggest-dirs`
+- **feat:** `/suggest-dirs` is now interactive — pick a directory and it's added immediately
+- **feat:** `add_directory` LLM tool supports label resolution — subagents can pass `{path: "xshop"}` instead of absolute paths
+- **refactor:** Extracted `resolveInputPath` helper shared across commands and tools
+- **fix:** Release workflow — `generate_release_notes` was overriding `body_path`, changelog now appears in GitHub releases
+
 ## 1.2.1
 
 - **fix:** Ship `.npmrc` with `omit=dev` — prevents 259 devDependency packages from being installed alongside the extension. Zero runtime dependencies.
