@@ -603,13 +603,14 @@ export default function addDirExtension(pi: ExtensionAPI) {
           const selected = await ctx.ui.select("Add directory:", choices);
           if (selected === undefined) return;
 
-          if (Number(selected) === choices.length - 1) {
-            // Custom path
+          const selectedIdx = choices.indexOf(selected);
+          if (selectedIdx === choices.length - 1 || selectedIdx === -1) {
+            // Custom path (last option or not found)
             const prompted = await ctx.ui.input("Directory path:", "");
             if (!prompted) return;
             inputPath = prompted;
           } else {
-            inputPath = suggestions[Number(selected)].absolutePath;
+            inputPath = suggestions[selectedIdx].absolutePath;
           }
         } else {
           const prompted = await ctx.ui.input("Directory path (no suggestions found):", "");
@@ -657,7 +658,10 @@ export default function addDirExtension(pi: ExtensionAPI) {
       const selected = await ctx.ui.select("Suggested directories — pick to add:", choices);
       if (selected === undefined) return;
 
-      const picked = suggestions[Number(selected)];
+      const selectedIdx = choices.indexOf(selected);
+      if (selectedIdx === -1) return;
+
+      const picked = suggestions[selectedIdx];
       if (!picked) return;
 
       const result = addDir(picked.absolutePath, ctx.cwd, ctx);
@@ -700,7 +704,8 @@ export default function addDirExtension(pi: ExtensionAPI) {
         const choices = addedDirs.map(d => `${d.label} — ${d.absolutePath}`);
         const selected = await ctx.ui.select("Remove which directory?", choices);
         if (selected === undefined) return;
-        const selectedDir = addedDirs[Number(selected)];
+        const selectedIdx = choices.indexOf(selected);
+        const selectedDir = selectedIdx >= 0 ? addedDirs[selectedIdx] : undefined;
         absolutePath = selectedDir?.absolutePath;
       }
 

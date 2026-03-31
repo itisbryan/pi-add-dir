@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+- **fix:** `ctx.ui.select` returns the selected string, not an index — all select handlers (`/add-dir`, `/suggest-dirs`, `/remove-dir`) now use `indexOf` to find the match
+
 ## 1.3.0
 
 ### Label-Based Directory Resolution & Interactive Suggestions
