@@ -1,6 +1,6 @@
 {
   "name": "pi-add-dir",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Add external directories to your pi session — loads their AGENTS.md, CLAUDE.md, and skills into context.",
   "keywords": [
     "pi-package",
@@ -43,6 +43,11 @@
     "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-tui": "*",
     "@sinclair/typebox": "*"
+  },
+  "peerDependenciesMeta": {
+    "@mariozechner/pi-coding-agent": { "optional": true },
+    "@mariozechner/pi-tui": { "optional": true },
+    "@sinclair/typebox": { "optional": true }
   },
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.64.0",
