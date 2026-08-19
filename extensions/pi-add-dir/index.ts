@@ -78,8 +78,45 @@ const EXTENSION_DIRS = [
   ".pi/extensions",
 ];
 
+/**
+ * Expand a leading `~` / `~user` to an absolute home path.
+ * Handles `~`, `~/foo`, and `~user/foo` (POSIX only, best-effort via
+ * /etc/passwd, falling back to /home/<user> if it exists).
+ */
+function expandHome(input: string): string {
+  if (input === "~") return os.homedir();
+  if (input.startsWith("~/") || input.startsWith("~\\")) {
+    return path.join(os.homedir(), input.slice(2));
+  }
+  if (process.platform !== "win32" && input.startsWith("~")) {
+    // `~user` form
+    const rest = input.slice(1);
+    const slashIdx = rest.indexOf("/");
+    const user = slashIdx === -1 ? rest : rest.slice(0, slashIdx);
+    const remainder = slashIdx === -1 ? "" : rest.slice(slashIdx);
+    let home: string | undefined;
+    try {
+      for (const line of fs.readFileSync("/etc/passwd", "utf-8").split("\n")) {
+        if (line.startsWith(`${user}:`)) {
+          home = line.split(":")[5];
+          if (home) break;
+        }
+      }
+    } catch {
+      // /etc/passwd unreadable — fall back to the /home/<user> guess below
+    }
+    if (!home) {
+      const guess = path.join("/home", user);
+      if (dirExists(guess)) home = guess;
+    }
+    if (home) return path.join(home, remainder);
+  }
+  return input;
+}
+
 function resolveDir(input: string, cwd: string): string {
-  const resolved = path.isAbsolute(input) ? input : path.resolve(cwd, input);
+  const expanded = expandHome(input);
+  const resolved = path.isAbsolute(expanded) ? expanded : path.resolve(cwd, expanded);
   try {
     return fs.realpathSync(resolved);
   } catch {

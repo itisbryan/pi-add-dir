@@ -9,8 +9,40 @@ import * as crypto from "node:crypto";
 // extension). This also serves as a spec for expected behavior.
 // ---------------------------------------------------------------------------
 
+function expandHome(input: string): string {
+  if (input === "~") return os.homedir();
+  if (input.startsWith("~/") || input.startsWith("~\\")) {
+    return path.join(os.homedir(), input.slice(2));
+  }
+  if (process.platform !== "win32" && input.startsWith("~")) {
+    // `~user` form
+    const rest = input.slice(1);
+    const slashIdx = rest.indexOf("/");
+    const user = slashIdx === -1 ? rest : rest.slice(0, slashIdx);
+    const remainder = slashIdx === -1 ? "" : rest.slice(slashIdx);
+    let home: string | undefined;
+    try {
+      for (const line of fs.readFileSync("/etc/passwd", "utf-8").split("\n")) {
+        if (line.startsWith(`${user}:`)) {
+          home = line.split(":")[5];
+          if (home) break;
+        }
+      }
+    } catch {
+      // /etc/passwd unreadable — fall back to the /home/<user> guess below
+    }
+    if (!home) {
+      const guess = path.join("/home", user);
+      if (dirExists(guess)) home = guess;
+    }
+    if (home) return path.join(home, remainder);
+  }
+  return input;
+}
+
 function resolveDir(input: string, cwd: string): string {
-  const resolved = path.isAbsolute(input) ? input : path.resolve(cwd, input);
+  const expanded = expandHome(input);
+  const resolved = path.isAbsolute(expanded) ? expanded : path.resolve(cwd, expanded);
   try {
     return fs.realpathSync(resolved);
   } catch {
@@ -153,10 +185,44 @@ function writeFile(base: string, relPath: string, content: string): void {
 // Tests
 // ---------------------------------------------------------------------------
 
+describe("expandHome", () => {
+  it("expands bare ~ to the home directory", () => {
+    expect(expandHome("~")).toBe(os.homedir());
+  });
+
+  it("expands ~/ with a subpath", () => {
+    const result = expandHome("~/sub/dir");
+    expect(result).toBe(path.join(os.homedir(), "sub", "dir"));
+  });
+
+  it("resolves ~user to that user's home when resolvable", () => {
+    if (process.platform === "win32") return; // POSIX-only feature
+    const user = os.userInfo().username;
+    expect(expandHome(`~${user}`)).toBe(os.homedir());
+    expect(expandHome(`~${user}/x`)).toBe(path.join(os.homedir(), "x"));
+  });
+
+  it("leaves non-tilde paths untouched", () => {
+    expect(expandHome("/abs/path")).toBe("/abs/path");
+    expect(expandHome("rel/path")).toBe("rel/path");
+    expect(expandHome("./x")).toBe("./x");
+  });
+});
+
 describe("resolveDir", () => {
   it("resolves absolute paths as-is", () => {
     const result = resolveDir("/tmp/some-dir", "/other");
     expect(result).toBe("/tmp/some-dir");
+  });
+
+  it("expands ~/ against the home directory", () => {
+    const result = resolveDir("~/sub", "/tmp");
+    expect(result).toMatch(/\/sub$/);
+    expect(result.startsWith(os.homedir())).toBe(true);
+  });
+
+  it("expands bare ~", () => {
+    expect(resolveDir("~", "/tmp")).toBe(os.homedir());
   });
 
   it("resolves relative paths against cwd", () => {
