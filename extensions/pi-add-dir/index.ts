@@ -30,6 +30,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { completeDirectoryPaths } from "./path-completions.js";
 import { suggestDirectories } from "./suggestions.js";
 
 // ---------------------------------------------------------------------------
@@ -583,6 +584,9 @@ export default function addDirExtension(pi: ExtensionAPI) {
 
   pi.registerCommand("add-dir", {
     description: "Add an external directory to this session (shows suggestions when called without args)",
+    getArgumentCompletions(prefix: string) {
+      return completeDirectoryPaths(prefix, currentCwd);
+    },
     handler: async (args, ctx) => {
       let inputPath = args?.trim();
 
