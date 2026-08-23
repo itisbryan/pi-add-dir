@@ -78,8 +78,13 @@ const EXTENSION_DIRS = [
   ".pi/extensions",
 ];
 
-function resolveDir(input: string, cwd: string): string {
-  const resolved = path.isAbsolute(input) ? input : path.resolve(cwd, input);
+export function resolveDir(input: string, cwd: string): string {
+  const prefix = input.match(/^~(?:[\\/]|$)/)?.[0];
+  const expanded = prefix
+    ? path.join(os.homedir(), input.slice(prefix.length))
+    : input;
+
+  const resolved = path.isAbsolute(expanded) ? expanded : path.resolve(cwd, expanded);
   try {
     return fs.realpathSync(resolved);
   } catch {
