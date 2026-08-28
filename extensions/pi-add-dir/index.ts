@@ -78,8 +78,21 @@ const EXTENSION_DIRS = [
   ".pi/extensions",
 ];
 
-function resolveDir(input: string, cwd: string): string {
-  const resolved = path.isAbsolute(input) ? input : path.resolve(cwd, input);
+const TILDE_PREFIX = process.platform === "win32" ? /^~(?:[\\/]|$)/ : /^~(?:\/|$)/;
+const NAMED_USER_TILDE_PREFIX = process.platform === "win32" ? /^~[^/\\]+[\\/]/ : /^~[^/\\]+\//;
+
+export function expandTilde(input: string): string {
+  const prefix = input.match(TILDE_PREFIX)?.[0];
+  return prefix ? path.join(os.homedir(), input.slice(prefix.length)) : input;
+}
+
+function isNamedUserTilde(input: string): boolean {
+  return NAMED_USER_TILDE_PREFIX.test(input);
+}
+
+export function resolveDir(input: string, cwd: string): string {
+  const expanded = expandTilde(input);
+  const resolved = path.isAbsolute(expanded) ? expanded : path.resolve(cwd, expanded);
   try {
     return fs.realpathSync(resolved);
   } catch {
@@ -473,7 +486,10 @@ export default function addDirExtension(pi: ExtensionAPI) {
     const absolutePath = resolveDir(dirPath, cwd);
 
     if (!dirExists(absolutePath)) {
-      return { ok: false, message: `Directory does not exist: ${absolutePath}`, hasNewSkills: false, extensionHints: [] };
+      const message = isNamedUserTilde(dirPath)
+        ? "~user expansion isn't supported — use an absolute path."
+        : `Directory does not exist: ${absolutePath}`;
+      return { ok: false, message, hasNewSkills: false, extensionHints: [] };
     }
 
     // Check for duplicates
@@ -606,14 +622,14 @@ export default function addDirExtension(pi: ExtensionAPI) {
           const selectedIdx = choices.indexOf(selected);
           if (selectedIdx === choices.length - 1 || selectedIdx === -1) {
             // Custom path (last option or not found)
-            const prompted = await ctx.ui.input("Directory path:", "");
+            const prompted = (await ctx.ui.input("Directory path:", ""))?.trim();
             if (!prompted) return;
             inputPath = prompted;
           } else {
             inputPath = suggestions[selectedIdx].absolutePath;
           }
         } else {
-          const prompted = await ctx.ui.input("Directory path (no suggestions found):", "");
+          const prompted = (await ctx.ui.input("Directory path (no suggestions found):", ""))?.trim();
           if (!prompted) return;
           inputPath = prompted;
         }

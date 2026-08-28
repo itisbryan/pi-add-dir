@@ -3,20 +3,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import * as crypto from "node:crypto";
+import { expandTilde, resolveDir } from "../extensions/pi-add-dir/index.js";
 
 // ---------------------------------------------------------------------------
-// Re-implement helpers here for unit testing (they're not exported from the
-// extension). This also serves as a spec for expected behavior.
+// Re-implement unexported helpers here for unit testing. This also serves as a
+// spec for expected behavior.
 // ---------------------------------------------------------------------------
-
-function resolveDir(input: string, cwd: string): string {
-  const resolved = path.isAbsolute(input) ? input : path.resolve(cwd, input);
-  try {
-    return fs.realpathSync(resolved);
-  } catch {
-    return path.resolve(resolved);
-  }
-}
 
 function dirExists(dir: string): boolean {
   try {
@@ -157,6 +149,41 @@ describe("resolveDir", () => {
   it("resolves absolute paths as-is", () => {
     const result = resolveDir("/tmp/some-dir", "/other");
     expect(result).toBe("/tmp/some-dir");
+  });
+
+  it("expands current-user tilde paths only", () => {
+    const cwd = os.tmpdir();
+    const child = `.pi-add-dir-missing-${crypto.randomUUID()}`;
+    const expectedChild = path.join(os.homedir(), child);
+
+    expect(expandTilde("~")).toBe(os.homedir());
+    expect(expandTilde(`~/${child}`)).toBe(expectedChild);
+    expect(expandTilde(`~//${child}`)).toBe(expectedChild);
+    expect(expandTilde(`~user/${child}`)).toBe(`~user/${child}`);
+    expect(expandTilde(`./~/${child}`)).toBe(`./~/${child}`);
+
+    expect(resolveDir("~", cwd)).toBe(fs.realpathSync(os.homedir()));
+    expect(resolveDir(`~/${child}`, cwd)).toBe(expectedChild);
+    if (process.platform === "win32") {
+      expect(resolveDir(`~\\${child}`, cwd)).toBe(expectedChild);
+    } else {
+      expect(resolveDir(`~\\${child}`, cwd)).toBe(path.resolve(cwd, `~\\${child}`));
+    }
+    expect(resolveDir(`~user/${child}`, cwd)).toBe(path.resolve(cwd, `~user/${child}`));
+    expect(resolveDir(`./~/${child}`, cwd)).toBe(path.resolve(cwd, `./~/${child}`));
+  });
+
+  it("does not shadow POSIX directories containing a backslash", () => {
+    if (process.platform === "win32") return;
+
+    const cwd = makeTmpDir();
+    const literalDir = path.join(cwd, "~\\Desktop", "sub");
+    fs.mkdirSync(literalDir, { recursive: true });
+    try {
+      expect(resolveDir("~\\Desktop/sub", cwd)).toBe(fs.realpathSync(literalDir));
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it("resolves relative paths against cwd", () => {
