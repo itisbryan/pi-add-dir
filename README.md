@@ -54,6 +54,8 @@ Then `/reload` in pi.
 /remove-dir /Users/me/other-project
 ```
 
+`/add-dir` supports directory-only path completion relative to pi's current working directory. Press Tab while typing a path to browse nested directories.
+
 ### LLM Tools
 
 Two tools are available for the agent:
