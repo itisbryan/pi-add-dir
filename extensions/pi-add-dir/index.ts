@@ -814,11 +814,6 @@ export default function addDirExtension(pi: ExtensionAPI) {
 
       // Trigger reload if skills found so they register as /skill:name
       if (dirCtx.skills.size > 0) {
-        // Use sendMessage to trigger reload without polluting command autocomplete
-        pi.sendMessage(
-          { customType: "add-dir:reload", content: [], display: false },
-          { triggerTurn: false },
-        );
         // Schedule the actual reload via a brief delay to let the tool result render first
         setTimeout(() => {
           pi.sendUserMessage("/reload", { deliverAs: "followUp" });

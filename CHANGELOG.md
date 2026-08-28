@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **fix:** Queue skill reload without injecting a custom message mid-tool execution, preventing session tree corruption
+
+
 ## 1.3.1
 
 - **fix:** `ctx.ui.select` returns the selected string, not an index — all select handlers (`/add-dir`, `/suggest-dirs`, `/remove-dir`) now use `indexOf` to find the match
